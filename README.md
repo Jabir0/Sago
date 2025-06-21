@@ -359,5 +359,3 @@ Kami menyambut kontribusi dari komunitas\! Jika Anda ingin berkontribusi pada Sa
 Proyek ini dilisensikan di bawah Lisensi MIT. Lihat file [LICENSE](https://www.google.com/search?q=LICENSE) untuk detail lebih lanjut.
 
 -----
-
-*(**Catatan Penting**: Pastikan Anda membuat file `requirements.txt` yang akurat, dan file `LICENSE` jika Anda ingin mengadopsi lisensi MIT atau lisensi lainnya.)*
