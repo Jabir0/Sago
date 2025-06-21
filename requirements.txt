@@ -1,0 +1,7 @@
+streamlit
+flask
+langgraph==0.3.21
+langchain-google-genai==2.1.2
+langgraph-prebuilt==0.1.7
+langgraph-checkpoint-sqlite==0.0.10
+python-dotenv

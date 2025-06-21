@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <title>Sago - Smart Agent Gizi Online</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+        }
+
+        /* Header Styles */
+        .header-area {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(76, 175, 80, 0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .main-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo h1 {
+            color: #4CAF50;
+            font-size: 2rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .nav {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav a:hover, .nav a.active {
+            color: #4CAF50;
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #4CAF50;
+            transition: width 0.3s ease;
+        }
+
+        .nav a:hover::after, .nav a.active::after {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 120px 0 80px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero-section h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            animation: fadeInUp 1s ease;
+        }
+
+        .hero-section p {
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto 30px;
+            opacity: 0.9;
+            animation: fadeInUp 1s ease 0.2s both;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: white;
+            color: #4CAF50;
+            padding: 15px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            animation: fadeInUp 1s ease 0.4s both;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            color: #4CAF50;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 80px 0;
+            background: white;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-title h6 {
+            color: #4CAF50;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.1);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(76, 175, 80, 0.15);
+            border-color: #4CAF50;
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .feature-card h4 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Local Approach Section */
+        .local-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+        }
+
+        .local-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+
+        .local-text h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .local-text p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .local-features {
+            list-style: none;
+            margin-top: 30px;
+        }
+
+        .local-features li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .local-features li i {
+            color: #4CAF50;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+
+        .local-image {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .local-image img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            background: #4CAF50;
+            color: white;
+            padding: 60px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .stat-item p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Chatbot Bubble */
+        .chatbot-bubble {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg,rgb(255, 255, 255),rgb(201, 220, 202));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3);
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        .chatbot-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+
+        .chatbot-bubble::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Footer */
+        footer {
+            background: #333;
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+        }
+
+        footer p {
+            margin: 0;
+            opacity: 0.8;
+        }
+
+        footer a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3);
+            }
+            50% {
+                box-shadow: 0 5px 30px rgba(76, 175, 80, 0.5);
+            }
+            100% {
+                box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav {
+                display: none;
+            }
+            
+            .local-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header-area">
+        <div class="container">
+            <nav class="main-nav">
+                <a href="{{ url_for('index') }}" class="logo">
+                    <h1>Sago</h1>
+                </a>
+                <ul class="nav">
+                    <li><a href="{{ url_for('gizibot_home_page') }}"class="active">Home</a></li>
+                    <li><a href="{{ url_for('gizibot_article_page') }}">Article</a></li>
+                    <li><a href="{{ url_for('gizibot_recipes_page') }}">Recipes</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Smart Agent Gizi Online</h1>
+                <p>Konsultasi gizi terpersonalisasi dengan pendekatan kearifan lokal Sulawesi Tenggara. Dapatkan rekomendasi makanan sehat yang sesuai dengan budaya dan kebutuhan nutrisi Anda.</p>
+                <a href="{{ url_for('index') }}" class="cta-button">Mulai Konsultasi</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="container">
+            <div class="section-title">
+                <h6>| Keunggulan Kami</h6>
+                <h2>Mengapa Memilih Sago?</h2>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-user-cog"></i>
+                    </div>
+                    <h4>Konsultasi Terpersonalisasi</h4>
+                    <p>AI agent yang memahami kebutuhan gizi individual Anda berdasarkan kondisi kesehatan, usia, aktivitas, dan preferensi makanan lokal.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-leaf"></i>
+                    </div>
+                    <h4>Kearifan Lokal Sultra</h4>
+                    <p>Rekomendasi makanan berbasis bahan-bahan lokal Sulawesi Tenggara seperti sagu, ikan laut, sayuran tradisional, dan rempah-rempah khas daerah.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h4>AI Learning Adaptif</h4>
+                    <p>Sistem pembelajaran yang terus berkembang memahami pola makan dan preferensi Anda untuk memberikan saran yang semakin akurat.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <h4>Akses 24/7</h4>
+                    <p>Konsultasi kapan saja, di mana saja melalui chatbot cerdas yang siap membantu permasalahan gizi dan nutrisi Anda.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <h4>Menu Harian Personal</h4>
+                    <p>Mendapatkan rekomendasi menu harian yang disesuaikan dengan kebutuhan kalori, budget, dan ketersediaan bahan makanan lokal.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h4>Tracking Progress</h4>
+                    <p>Pantau perkembangan kesehatan dan nutrisi Anda dengan grafik dan analisis yang mudah dipahami.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Local Approach Section -->
+    <section class="local-section">
+        <div class="container">
+            <div class="local-content">
+                <div class="local-text">
+                    <h2>Pendekatan Kearifan Lokal Sulawesi Tenggara</h2>
+                    <p>Sago memahami pentingnya melestarikan budaya makanan lokal sambil memastikan kebutuhan gizi terpenuhi. Kami mengintegrasikan pengetahuan nutrisi modern dengan kearifan tradisional masyarakat Sulawesi Tenggara.</p>
+                    
+                    <ul class="local-features">
+                        <li><i class="fas fa-check-circle"></i> Resep tradisional berbasis sagu dan umbi-umbian</li>
+                        <li><i class="fas fa-check-circle"></i> Pemanfaatan ikan laut dan hasil tambak lokal</li>
+                        <li><i class="fas fa-check-circle"></i> Sayuran dan buah-buahan khas Sultra</li>
+                        <li><i class="fas fa-check-circle"></i> Rempah dan bumbu tradisional untuk kesehatan</li>
+                        <li><i class="fas fa-check-circle"></i> Pola makan sesuai budaya Tolaki, Bugis, dan Bajo</li>
+                    </ul>
+                </div>
+                
+                <div class="local-image">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='400' viewBox='0 0 500 400'%3E%3Crect width='500' height='400' fill='%234CAF50'/%3E%3Ctext x='250' y='200' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3ESulawesi Tenggara%3C/text%3E%3Ctext x='250' y='230' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3EKearifan Lokal%3C/text%3E%3C/svg%3E" alt="Kearifan Lokal Sulawesi Tenggara">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>1000+</h3>
+                    <p>Pengguna Aktif</p>
+                </div>
+                <div class="stat-item">
+                    <h3>500+</h3>
+                    <p>Resep Lokal</p>
+                </div>
+                <div class="stat-item">
+                    <h3>95%</h3>
+                    <p>Tingkat Kepuasan</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>Layanan Tersedia</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>Copyright © 2025 Sago - Smart Agent Gizi Online. All rights reserved. | Sulawesi Tenggara</p>
+        </div>
+    </footer>
+
+    <!-- Chatbot Bubble -->
+    <div class="chatbot-bubble" onclick="openChatbot()">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Sago" style="width: 32px; height: 32px;">
+    </div>
+
+    <script>
+        function openChatbot() {
+            window.location.href = "{{ url_for('index') }}";
+        }
+
+        // Smooth scrolling untuk navigasi
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe feature cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <title>Resep - Sago Smart Agent Gizi Online</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
+
+    <style>
+        /* Variabel warna akan diambil dari style.css utama, tapi didefinisikan ulang di sini untuk development cepat */
+        :root {
+            --primary-color: #4CAF50;
+            --primary-dark: #388E3C;
+            --secondary-color: #607D8B;
+            --text-color-light: #333;
+            --text-color-dark: #eee;
+            --bg-color-light: #f4f7f6;
+            --bg-color-dark: #222;
+            --card-bg-light: #fff;
+            --card-bg-dark: #333;
+            --border-color-light: #ddd;
+            --border-color-dark: #555;
+            --input-bg-light: #fff;
+            --input-bg-dark: #444;
+            --shadow-color-light: rgba(0, 0, 0, 0.1);
+            --shadow-color-dark: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color-light);
+            background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode {
+            background-color: var(--bg-color-dark);
+            color: var(--text-color-dark);
+        }
+
+        /* Header Styles (Consistent with Home/Articles) */
+        .header-area {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(76, 175, 80, 0.1);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        body.dark-mode .header-area {
+            background: rgba(var(--card-bg-dark), 0.95);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .main-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        body.dark-mode .logo h1 {
+            color: var(--primary-color);
+        }
+
+        .nav {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--text-color-light);
+            font-weight: 500;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+        body.dark-mode .nav a {
+            color: var(--text-color-dark);
+        }
+
+        .nav a:hover, .nav a.active {
+            color: var(--primary-color);
+        }
+
+        .nav a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        .nav a:hover::after, .nav a.active::after {
+            width: 100%;
+        }
+
+        /* Page Header (Consistent with Articles) */
+        .page-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 120px 0 60px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .page-header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .page-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Search & Filter Section (Consistent with Articles) */
+        .search-filter-section {
+            background: var(--card-bg-light);
+            padding: 40px 0;
+            box-shadow: 0 2px 10px var(--shadow-color-light);
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        body.dark-mode .search-filter-section {
+            background: var(--card-bg-dark);
+            box-shadow: 0 2px 10px var(--shadow-color-dark);
+        }
+
+        .search-filter-container {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: 2px solid var(--border-color-light);
+            border-radius: 50px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background-color: var(--input-bg-light);
+            color: var(--text-color-light);
+        }
+        body.dark-mode .search-box input {
+            background-color: var(--input-bg-dark);
+            border-color: var(--border-color-dark);
+            color: var(--text-color-dark);
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .search-box i {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            border: 2px solid var(--border-color-light);
+            background: var(--card-bg-light);
+            border-radius: 25px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--secondary-color);
+        }
+        body.dark-mode .filter-btn {
+            background: var(--input-bg-dark);
+            border-color: var(--border-color-dark);
+            color: var(--text-color-dark);
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Recipes Section */
+        .recipes-section {
+            padding: 60px 0;
+            background-color: var(--bg-color-light);
+            transition: background-color 0.3s;
+        }
+        body.dark-mode .recipes-section {
+            background-color: var(--bg-color-dark);
+        }
+
+        .recipes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .recipe-card {
+            background: var(--card-bg-light);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid var(--border-color-light);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        body.dark-mode .recipe-card {
+            background: var(--card-bg-dark);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-color: var(--border-color-dark);
+        }
+
+        .recipe-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+
+        .recipe-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            position: relative;
+            overflow: hidden;
+        }
+        .recipe-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .recipe-card:hover .recipe-image img {
+            transform: scale(1.05);
+        }
+
+        .recipe-category {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.9);
+            color: var(--primary-color);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        body.dark-mode .recipe-category {
+            background: rgba(var(--card-bg-dark), 0.9);
+            color: var(--primary-color);
+        }
+
+        .recipe-content {
+            padding: 25px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .recipe-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-color-light);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        body.dark-mode .recipe-title {
+            color: var(--text-color-dark);
+        }
+
+        .recipe-meta {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+        }
+        body.dark-mode .recipe-meta {
+            color: var(--text-color-dark);
+        }
+        .recipe-meta i {
+            color: var(--primary-color);
+        }
+
+        .recipe-excerpt {
+            color: var(--secondary-color);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            flex-grow: 1;
+        }
+        body.dark-mode .recipe-excerpt {
+            color: var(--text-color-dark);
+        }
+
+        .view-recipe-btn {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            align-self: flex-start;
+        }
+        .view-recipe-btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* Pagination (Consistent with Articles) */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 60px;
+        }
+
+        .pagination a {
+            padding: 10px 15px;
+            border: 2px solid var(--border-color-light);
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--secondary-color);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        body.dark-mode .pagination a {
+            border-color: var(--border-color-dark);
+            color: var(--text-color-dark);
+        }
+
+        .pagination a:hover, .pagination a.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Chatbot Bubble */
+        .chatbot-bubble {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg,rgb(255, 255, 255),rgb(201, 220, 202));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3);
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        .chatbot-bubble:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+
+        .chatbot-bubble::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        /* Footer (Consistent with Home/Articles) */
+        footer {
+            background: #333;
+            color: white;
+            padding: 40px 0;
+            text-align: center;
+            margin-top: 80px;
+        }
+
+        footer p {
+            margin: 0;
+            opacity: 0.8;
+        }
+
+        footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3);
+            }
+            50% {
+                box-shadow: 0 5px 30px rgba(76, 175, 80, 0.5);
+            }
+            100% {
+                box-shadow: 0 5px 20px rgba(76, 175, 80, 0.3);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .nav {
+                display: none;
+            }
+            
+            .search-filter-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-box {
+                min-width: auto;
+            }
+            
+            .recipes-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header-area">
+        <div class="container">
+            <nav class="main-nav">
+                <a href="{{ url_for('index') }}" class="logo">
+                    <h1>Sago</h1>
+                </a>
+                <ul class="nav">
+                    <li><a href="{{ url_for('gizibot_home_page') }}">Home</a></li>
+                    <li><a href="{{ url_for('gizibot_article_page') }}">Article</a></li>
+                    <li><a href="{{ url_for('gizibot_recipes_page') }}" class="active">Recipes</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <section class="page-header">
+        <div class="container">
+            <div class="page-header-content">
+                <h1>Kumpulan Resep Sehat & Lezat</h1>
+                <p>Jelajahi berbagai resep gizi seimbang, mulai dari hidangan lokal Sulawesi Tenggara hingga kreasi modern.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="search-filter-section">
+        <div class="container">
+            <div class="search-filter-container">
+                <div class="search-box">
+                    <input type="text" placeholder="Cari resep berdasarkan bahan, nama, atau kategori...">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="filter-buttons">
+                    <a href="#" class="filter-btn active">Semua</a>
+                    <a href="#" class="filter-btn">Lokal Sultra</a>
+                    <a href="#" class="filter-btn">Sarapan</a>
+                    <a href="#" class="filter-btn">Makan Siang</a>
+                    <a href="#" class="filter-btn">Makan Malam</a>
+                    <a href="#" class="filter-btn">Vegetarian</a>
+                    <a href="#" class="filter-btn">Rendah Kalori</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="recipes-section">
+        <div class="container">
+            <div class="recipes-grid">
+                <div class="recipe-card">
+                    <div class="recipe-image">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='350' height='200' viewBox='0 0 350 200'%3E%3Crect width='350' height='200' fill='%234CAF50'/%3E%3Ctext x='175' y='100' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3EIkan Bakar%3C/text%3E%3Ctext x='175' y='125' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3ESambal Dabu%3C/text%3E%3C/svg%3E" alt="Ikan Bakar Sambal Dabu-Dabu">
+                        <span class="recipe-category">Lokal Sultra</span>
+                    </div>
+                    <div class="recipe-content">
+                        <h3 class="recipe-title">Ikan Bakar Sambal Dabu-Dabu Segar</h3>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> 45 Menit</span>
+                            <span><i class="fas fa-utensils"></i> Seafood</span>
+                            <span><i class="fas fa-star"></i> 4.8</span>
+                        </div>
+                        <p class="recipe-excerpt">Resep ikan bakar favorit dengan sambal dabu-dabu segar khas Indonesia Timur. Kaya protein dan omega-3.</p>
+                        <a href="#" class="view-recipe-btn">Lihat Resep <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+
+                <div class="recipe-card">
+                    <div class="recipe-image">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='350' height='200' viewBox='0 0 350 200'%3E%3Crect width='350' height='200' fill='%234CAF50'/%3E%3Ctext x='175' y='100' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3ETumis Kangkung%3C/text%3E%3Ctext x='175' y='125' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3ETempe%3C/text%3E%3C/svg%3E" alt="Tumis Kangkung Tempe">
+                        <span class="recipe-category">Vegetarian</span>
+                    </div>
+                    <div class="recipe-content">
+                        <h3 class="recipe-title">Tumis Kangkung Tempe: Cepat & Bergizi</h3>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> 20 Menit</span>
+                            <span><i class="fas fa-utensils"></i> Sayuran</span>
+                            <span><i class="fas fa-star"></i> 4.5</span>
+                        </div>
+                        <p class="recipe-excerpt">Hidangan vegetarian yang mudah dibuat dan kaya serat. Cocok untuk makan siang atau malam.</p>
+                        <a href="#" class="view-recipe-btn">Lihat Resep <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+
+                <div class="recipe-card">
+                    <div class="recipe-image">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='350' height='200' viewBox='0 0 350 200'%3E%3Crect width='350' height='200' fill='%234CAF50'/%3E%3Ctext x='175' y='100' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3EDaun Kelor%3C/text%3E%3Ctext x='175' y='125' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3ESayur Bening%3C/text%3E%3C/svg%3E" alt="Sayur Bening Daun Kelor">
+                        <span class="recipe-category">Lokal Sultra</span>
+                    </div>
+                    <div class="recipe-content">
+                        <h3 class="recipe-title">Sayur Bening Daun Kelor Khas Sultra</h3>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> 30 Menit</span>
+                            <span><i class="fas fa-utensils"></i> Sup</span>
+                            <span><i class="fas fa-star"></i> 4.9</span>
+                        </div>
+                        <p class="recipe-excerpt">Resep tradisional sayur bening dengan daun kelor, superfood lokal yang kaya nutrisi dan antioksidan.</p>
+                        <a href="#" class="view-recipe-btn">Lihat Resep <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+
+                <div class="recipe-card">
+                    <div class="recipe-image">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='350' height='200' viewBox='0 0 350 200'%3E%3Crect width='350' height='200' fill='%234CAF50'/%3E%3Ctext x='175' y='100' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3ESmoothie%3C/text%3E%3Ctext x='175' y='125' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3EBuah Naga%3C/text%3E%3C/svg%3E" alt="Smoothie Buah Naga">
+                        <span class="recipe-category">Sarapan</span>
+                    </div>
+                    <div class="recipe-content">
+                        <h3 class="recipe-title">Smoothie Buah Naga & Pisang Penguat Energi</h3>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> 10 Menit</span>
+                            <span><i class="fas fa-utensils"></i> Minuman</span>
+                            <span><i class="fas fa-star"></i> 4.7</span>
+                        </div>
+                        <p class="recipe-excerpt">Sarapan cepat dan sehat dengan perpaduan buah naga dan pisang, kaya vitamin dan serat.</p>
+                        <a href="#" class="view-recipe-btn">Lihat Resep <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+
+                <div class="recipe-card">
+                    <div class="recipe-image">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='350' height='200' viewBox='0 0 350 200'%3E%3Crect width='350' height='200' fill='%234CAF50'/%3E%3Ctext x='175' y='100' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3EPepes Ikan%3C/text%3E%3Ctext x='175' y='125' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3ESagu%3C/text%3E%3C/svg%3E" alt="Pepes Ikan Patin Sagu">
+                        <span class="recipe-category">Makan Malam</span>
+                    </div>
+                    <div class="recipe-content">
+                        <h3 class="recipe-title">Pepes Ikan Patin dengan Balutan Sagu</h3>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> 60 Menit</span>
+                            <span><i class="fas fa-utensils"></i> Ikan</span>
+                            <span><i class="fas fa-star"></i> 4.6</span>
+                        </div>
+                        <p class="recipe-excerpt">Resep pepes ikan patin yang unik dengan sentuhan sagu, memberikan tekstur lembut dan cita rasa khas.</p>
+                        <a href="#" class="view-recipe-btn">Lihat Resep <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+
+                <div class="recipe-card">
+                    <div class="recipe-image">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='350' height='200' viewBox='0 0 350 200'%3E%3Crect width='350' height='200' fill='%234CAF50'/%3E%3Ctext x='175' y='100' text-anchor='middle' fill='white' font-size='24' font-family='Arial'%3ESalad Buah%3C/text%3E%3Ctext x='175' y='125' text-anchor='middle' fill='white' font-size='16' font-family='Arial'%3ETropis%3C/text%3E%3C/svg%3E" alt="Salad Buah Tropis">
+                        <span class="recipe-category">Rendah Kalori</span>
+                    </div>
+                    <div class="recipe-content">
+                        <h3 class="recipe-title">Salad Buah Tropis dengan Dressing Madu Lemon</h3>
+                        <div class="recipe-meta">
+                            <span><i class="fas fa-clock"></i> 15 Menit</span>
+                            <span><i class="fas fa-utensils"></i> Salad</span>
+                            <span><i class="fas fa-star"></i> 4.8</span>
+                        </div>
+                        <p class="recipe-excerpt">Salad buah segar dari buah-buahan tropis seperti nanas, mangga, dan pepaya, dengan dressing sehat.</p>
+                        <a href="#" class="view-recipe-btn">Lihat Resep <i class="fas fa-arrow-right"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pagination">
+                <a href="#" class="active">1</a>
+                <a href="#">2</a>
+                <a href="#">3</a>
+                <a href="#"><i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="col-lg-12">
+                <p>Copyright © 2025 Sago - Smart Agent Gizi Online. All rights reserved. | Sulawesi Tenggara</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Chatbot Bubble -->
+    <div class="chatbot-bubble" onclick="openChatbot()">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Sago" style="width: 32px; height: 32px;">
+    </div>
+
+    <script src="{{ url_for('static', filename='vendor/jquery/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/isotope.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/owl-carousel.js') }}"></script>
+    <script>
+        function openChatbot() {
+            window.location.href = "{{ url_for('index') }}";
+        }
+
+        // Script untuk toggle Dark Mode di halaman ini jika dibutuhkan terpisah
+        // Atau asumsikan sudah ada di script.js utama jika file itu di-include
+        const darkModeToggle = document.getElementById('darkModeToggle'); // Jika ada di header/footer
+        if (darkModeToggle) {
+            darkModeToggle.checked = localStorage.getItem('darkMode') === 'enabled';
+            if (darkModeToggle.checked) { document.body.classList.add('dark-mode'); }
+            darkModeToggle.addEventListener('change', () => {
+                if (darkModeToggle.checked) {
+                    document.body.classList.add('dark-mode');
+                    localStorage.setItem('darkMode', 'enabled');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    localStorage.setItem('darkMode', 'disabled');
+                }
+            });
+        }
+    </script>
+
+</body>
+
+</html>
