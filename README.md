@@ -1,5 +1,3 @@
-Tentu, saya akan menyusun file `README.md` yang komprehensif untuk proyek Sago: Smart Agent Gizi Online Anda, mencakup semua poin yang Anda minta.
-
 -----
 
 # Sago: Smart Agent Gizi Online
@@ -12,25 +10,25 @@ Tentu, saya akan menyusun file `README.md` yang komprehensif untuk proyek Sago: 
 
 ## Daftar Isi
 
-1.  [Pendahuluan](https://www.google.com/search?q=%231-pendahuluan)
-2.  [Fitur Utama](https://www.google.com/search?q=%232-fitur-utama)
-3.  [Arsitektur Sistem](https://www.google.com/search?q=%233-arsitektur-sistem)
-      * [Diagram Blok](https://www.google.com/search?q=%2331-diagram-blok)
-      * [Alur Data dan Interaksi Pengguna](https://www.google.com/search?q=%2332-alur-data-dan-interaksi-pengguna)
-4.  [Teknologi & Tools yang Digunakan](https://www.google.com/search?q=%234-teknologi--tools-yang-digunakan)
-5.  [Pemrosesan Data](https://www.google.com/search?q=%235-pemrosesan-data)
-      * [Deskripsi Dataset](https://www.google.com/search?q=%2351-deskripsi-dataset)
-      * [Preprocessing Data](https://www.google.com/search?q=%2352-preprocessing-data)
-6.  [Implementasi Sistem Temu Kembali Informasi](https://www.google.com/search?q=%236-implementasi-sistem-temu-kembali-informasi)
-      * [Detail Penggunaan Algoritma](https://www.google.com/search?q=%2361-detail-penggunaan-algoritma)
-      * [Contoh Input & Output Sistem](https://www.google.com/search?q=%2362-contoh-input--output-sistem)
-7.  [Analisis dan Evaluasi](https://www.google.com/search?q=%237-analisis-dan-evaluasi)
-      * [Hasil Pengujian Sistem](https://www.google.com/search?q=%2371-hasil-pengujian-sistem)
-      * [Studi Kasus/Skenario Uji Coba Pengguna](https://www.google.com/search?q=%2372-studi-kasusskenario-uji-coba-pengguna)
-      * [Kelebihan dan Keterbatasan Sistem](https://www.google.com/search?q=%2373-kelebihan-dan-keterbatasan-sistem)
-8.  [Setup & Instalasi](https://www.google.com/search?q=%238-setup--instalasi)
-9.  [Kontribusi](https://www.google.com/search?q=%239-kontribusi)
-10. [Lisensi](https://www.google.com/search?q=%2310-lisensi)
+1.  [Pendahuluan](#)
+2.  [Fitur Utama](#)
+3.  [Arsitektur Sistem](#)
+      * [Diagram Blok](#)
+      * [Alur Data dan Interaksi Pengguna](#)
+4.  [Teknologi & Tools yang Digunakan](#)
+5.  [Pemrosesan Data](#)
+      * [Deskripsi Dataset](#)
+      * [Preprocessing Data](#)
+6.  [Implementasi Sistem Temu Kembali Informasi](#)
+      * [Detail Penggunaan Algoritma](#)
+      * [Contoh Input & Output Sistem](#)
+7.  [Analisis dan Evaluasi](#)
+      * [Hasil Pengujian Sistem](#)
+      * [Studi Kasus/Skenario Uji Coba Pengguna](#)
+      * [Kelebihan dan Keterbatasan Sistem](#)
+8.  [Setup & Instalasi](#)
+9.  [Kontribusi](#)
+10. [Lisensi](#)
 
 -----
 
@@ -56,18 +54,9 @@ Proyek ini memanfaatkan kekuatan Large Language Model (LLM) dari Google Gemini y
 
 Berikut adalah gambaran arsitektur sistem Sago:
 
-```mermaid
-graph TD
-    A[Pengguna] --> B(Antarmuka Web HTML/CSS/JS)
-    B --> C{Aplikasi Flask Python}
-    C -- Permintaan Chat --> D[Agent Gizi (LangGraph)]
-    D -- Panggilan Tool --> E{Tools Kustom}
-    E -- Data Makanan --> F[Dataset Nutrisi CSV]
-    E -- Data Rekomendasi --> G[Data Rekomendasi Hardcoded]
-    D -- Hasil Respons --> C
-    C -- Render Respons --> B
-    C -- Manajemen Sesi/Profil --> H[Database Lokal (SQLite)]
-```
+<div class="image-container">
+    <img src="images/Arsitektur Agent.png" alt="Deskripsi Gambar">
+</div>
 
 **Penjelasan Komponen:**
 
