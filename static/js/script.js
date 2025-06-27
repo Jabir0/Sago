@@ -5,6 +5,7 @@ const sidebar = document.getElementById('sidebar');
 const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
 const newChatBtn = document.getElementById('newChatBtn');
 const conversationsList = document.getElementById('conversationsList');
+const conversationsListToggle = document.getElementById('conversationsListToggle'); // New: Toggle button for conversations list
 const settingsBtn = document.getElementById('settingsBtn');
 const editProfileBtn = document.getElementById('editProfileBtn');
 const chatInput = document.getElementById('chatInput');
@@ -14,6 +15,7 @@ const typingIndicator = document.getElementById('typingIndicator');
 const settingsModal = document.getElementById('settingsModal');
 const closeSettingsModal = document.getElementById('closeSettingsModal');
 const clearAllChatsBtn = document.getElementById('clearAllChatsBtn');
+const autoReadAloudToggle = document.getElementById('autoReadAloudToggle'); // New: Auto read aloud toggle
 const editProfileModal = document.getElementById('editProfileModal');
 const closeEditProfileModal = document.getElementById('closeEditProfileModal');
 const profileForm = document.getElementById('profileForm');
@@ -22,12 +24,14 @@ const childrenContainer = document.getElementById('childrenContainer');
 const displayUserName = document.getElementById('displayUserName');
 const displayChildrenInfo = document.getElementById('displayChildrenInfo');
 const currentChatTitle = document.getElementById('currentChatTitle');
+const mainContainer = document.getElementById('mainContainer'); // Reference to the main container
 
 // --- Global Variables ---
 let isMarkedLoaded = false;
 let currentSessionId = window.currentSessionId; // From Flask Jinja
 let userProfileData = window.userProfileData; // From Flask Jinja
-
+const synth = window.speechSynthesis; // Web Speech API
+let autoReadAloudEnabled = false; // State for auto read aloud
 
 // --- Utility Functions ---
 
@@ -35,6 +39,30 @@ let userProfileData = window.userProfileData; // From Flask Jinja
 function parseAndRender(text) {
     let renderedHtml = isMarkedLoaded ? marked.parse(text) : text;
     return renderedHtml;
+}
+
+// Function to speak text using Web Speech API
+function speakText(text) {
+    if (!synth) {
+        console.warn('Web Speech API tidak didukung di browser ini.');
+        return;
+    }
+    if (synth.speaking) {
+        synth.cancel(); // Hentikan jika ada yang sedang berbicara
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'id-ID'; // Menggunakan Bahasa Indonesia
+
+    // Opsional: Coba cari suara yang cocok dengan aksen Indonesia jika tersedia
+    // Ini mungkin tidak ada di semua browser, jadi biarkan opsional
+    // Untuk mendapatkan daftar suara: synth.onvoiceschanged = () => { console.log(synth.getVoices()); };
+    // let voices = synth.getVoices();
+    // let foundVoice = voices.find(voice => voice.lang === 'id-ID' && voice.name.includes('Google')); // Contoh: Coba cari suara Google
+    // if (foundVoice) {
+    //     utterance.voice = foundVoice;
+    // }
+
+    synth.speak(utterance);
 }
 
 // Function to add a message to the chat display
@@ -56,16 +84,35 @@ function addMessage(text, sender, timestamp) {
     }
     timeDiv.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+    // Tambahkan tombol speaker hanya untuk pesan bot
+    if (sender === 'assistant') {
+        const speakButton = document.createElement('button');
+        speakButton.classList.add('speak-btn');
+        speakButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+        speakButton.title = 'Dengarkan pesan ini';
+        speakButton.onclick = (event) => {
+            event.stopPropagation(); // Mencegah event lain yang mungkin ada di message-content
+            speakText(text);
+        };
+        contentDiv.appendChild(speakButton); // Tambahkan di dalam konten pesan
+    }
+
+
     messageDiv.appendChild(contentDiv);
     messageDiv.appendChild(timeDiv);
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-    // After adding, if MathJax is loaded, re-render the *newly added* message content
+    // Setelah menambahkan, jika MathJax dimuat, render ulang konten pesan yang baru
     if (window.MathJax) {
         setTimeout(() => {
             MathJax.typesetPromise([contentDiv]).catch((err) => console.error("MathJax typesetting failed for new message: " + err.message));
         }, 10);
+    }
+
+    // Baca otomatis jika diaktifkan dan ini adalah pesan bot
+    if (sender === 'assistant' && autoReadAloudEnabled) {
+        speakText(text);
     }
 }
 
@@ -85,7 +132,10 @@ function updateProfileDisplay(profile) {
         profile.children.forEach(child => {
             const span = document.createElement('span');
             span.classList.add('child-info');
-            span.textContent = `${child.name} (${child.age} thn, ${child.gender})`;
+            // Tambahkan info BMI jika ada
+            const bmiInfo = profile.children_bmi_info && profile.children_bmi_info[child.name.toLowerCase()] ? 
+                            ` (BMI: ${profile.children_bmi_info[child.name.toLowerCase()].bmi}, ${profile.children_bmi_info[child.name.toLowerCase()].status})` : '';
+            span.textContent = `${child.name} (${child.age} thn, ${child.gender})${bmiInfo}`;
             displayChildrenInfo.appendChild(span);
         });
     } else {
@@ -125,18 +175,35 @@ async function sendMessage() {
             addMessage(data.response, 'assistant', new Date().toISOString());
             updateConversationListTimestamp(currentSessionId);
             if (messagesContainer.querySelectorAll('.message').length <= 3) {
-                loadConversationsList();
+                 loadConversationsList();
             }
+            // Update local userProfileData with potentially new BMI info from backend session
+            if (data.user_profile) { // Backend might return updated profile data
+                userProfileData = data.user_profile;
+                updateProfileDisplay(userProfileData);
+            } else if (data.extracted_user_info) { 
+                // Jika backend hanya mengembalikan extracted_user_info, merge secara manual
+                // Ini mungkin tidak terjadi dengan setup app_flask.py saat ini, tapi baik untuk berjaga-jaga
+                userProfileData.children_bmi_info = data.extracted_user_info.children_bmi_info || userProfileData.children_bmi_info;
+                updateProfileDisplay(userProfileData);
+            }
+           
         } else {
+            // Check for specific error types from backend
             if (data.status === 'profile_required') {
                 alert(data.response);
                 openModal('editProfileModal');
-            } else {
-                addMessage(`Error: ${data.response || 'Terjadi kesalahan tidak diketahui.'}`, 'assistant', new Date().toISOString());
+            } else if (data.error_type === 'rate_limit') { // Handle rate limit error
+                alert(data.response); // Show specific rate limit message
             }
+            else {
+                alert(`Error: ${data.response || 'Terjadi kesalahan tidak diketahui.'}`);
+            }
+            addMessage(`Error: ${data.response || 'Terjadi kesalahan tidak diketahui.'}`, 'assistant', new Date().toISOString());
         }
     } catch (error) {
         console.error('Error sending message:', error);
+        alert('Maaf, terjadi kesalahan koneksi atau pemrosesan respons. Silakan coba lagi.');
         addMessage('Maaf, terjadi kesalahan koneksi atau pemrosesan respons. Silakan coba lagi.', 'assistant', new Date().toISOString());
     } finally {
         sendBtn.disabled = false;
@@ -149,7 +216,7 @@ async function sendMessage() {
 function setMessage(text) {
     chatInput.value = text;
     sendMessage();
-    toggleSidebar(false);
+    toggleSidebar(false); // Tutup sidebar setelah memilih saran
 }
 
 // --- Sidebar & Session Management ---
@@ -158,18 +225,24 @@ function toggleSidebar(forceOpen = null) {
     if (window.innerWidth <= 768) { // Mobile behavior: overlay
         if (forceOpen === true) {
             sidebar.classList.add('open');
+            mainContainer.classList.add('sidebar-open-mobile'); // Add class to main container for overlay
         } else if (forceOpen === false) {
             sidebar.classList.remove('open');
+            mainContainer.classList.remove('sidebar-open-mobile'); // Remove overlay
         } else {
             sidebar.classList.toggle('open');
+            mainContainer.classList.toggle('sidebar-open-mobile'); // Toggle overlay
         }
-    } else { // Desktop behavior: push content
+    } else { // Desktop behavior: push content / minimal view
         if (forceOpen === true) {
             sidebar.classList.remove('closed-desktop'); // Open
+            conversationsList.style.display = 'block'; // Tampilkan kembali daftar percakapan
         } else if (forceOpen === false) {
             sidebar.classList.add('closed-desktop'); // Close
+            conversationsList.style.display = 'none'; // Sembunyikan daftar percakapan
         } else {
             sidebar.classList.toggle('closed-desktop'); // Toggle
+            conversationsList.style.display = sidebar.classList.contains('closed-desktop') ? 'none' : 'block';
         }
     }
 }
@@ -183,7 +256,14 @@ async function loadConversationsList() {
 
         if (data.sessions.length === 0) {
             conversationsList.innerHTML = '<p style="text-align:center; opacity:0.7; font-size:0.9em; padding:20px;">Belum ada percakapan. Mulai yang baru!</p>';
+            // Hide the actual list if empty, but keep the toggle button visible
+            conversationsList.style.display = 'none'; 
             return;
+        } else {
+            // Ensure the list is visible when there are conversations, unless sidebar is closed
+            if (!sidebar.classList.contains('closed-desktop')) {
+                conversationsList.style.display = 'block';
+            }
         }
 
         data.sessions.forEach(session => {
@@ -208,22 +288,18 @@ async function loadConversationsList() {
                     await deleteChatSession(session.session_id);
                 } else {
                     await loadChatSession(session.session_id);
-                    toggleSidebar(false);
+                    toggleSidebar(false); // Tutup sidebar setelah memuat sesi baru
                 }
             });
             conversationsList.appendChild(sessionItem);
         });
-    } catch (error) {
+    }
+    catch (error) {
         console.error('Error loading conversations list:', error);
     }
 }
 
 async function loadChatSession(sessionId) {
-    if (sessionId === currentSessionId) {
-        // toggleSidebar(false); // <--- HAPUS BARIS INI ATAU KOMENTARI
-        return;
-    }
-
     try {
         const response = await fetch(`/get_chat_history/${sessionId}`);
         const data = await response.json();
@@ -240,7 +316,7 @@ async function loadChatSession(sessionId) {
             if (sessionTitleItem) {
                 currentChatTitle.textContent = sessionTitleItem.textContent;
             } else {
-                currentChatTitle.textContent = 'GiziBot Chat';
+                currentChatTitle.textContent = 'Sago Chat';
             }
 
             displayInitialSuggestions();
@@ -320,10 +396,12 @@ function displayInitialSuggestions() {
         return;
     }
 
+    // Hanya tampilkan saran jika belum ada chat atau hanya ada pesan selamat datang
     if (messagesCount <= 1) {
+        const userName = userProfileData.name && userProfileData.name !== 'Anonim' ? userProfileData.name : 'Anda';
         const suggestionsHTML = `
             <div class="initial-suggestions">
-                <h2>Ada yang bisa Sago bantu?</h2>
+                <h2>Hai ${userName}, ada yang bisa Sago bantu?</h2>
                 <p>Anda bisa bertanya tentang nutrisi atau meminta rekomendasi menu. Contohnya:</p>
                 <div class="suggestion-buttons">
                     <button onclick="setMessage('Rekomendasi menu sehat untuk anak saya')">
@@ -343,6 +421,9 @@ function displayInitialSuggestions() {
                     </button>
                     <button onclick="setMessage('Bagaimana cara memenuhi kebutuhan serat?')">
                         Kebutuhan serat
+                    </button>
+                    <button onclick="setMessage('Cek BMI anak saya')">
+                        Cek BMI Anak
                     </button>
                 </div>
             </div>
@@ -393,6 +474,23 @@ darkModeToggle.addEventListener('change', () => {
     }
 });
 
+// Auto Read Aloud Toggle
+autoReadAloudToggle.checked = localStorage.getItem('autoReadAloud') === 'enabled';
+autoReadAloudEnabled = autoReadAloudToggle.checked; // Inisialisasi state global
+autoReadAloudToggle.addEventListener('change', () => {
+    if (autoReadAloudToggle.checked) {
+        autoReadAloudEnabled = true;
+        localStorage.setItem('autoReadAloud', 'enabled');
+    } else {
+        autoReadAloudEnabled = false;
+        localStorage.setItem('autoReadAloud', 'disabled');
+        if (synth.speaking) {
+            synth.cancel(); // Hentikan jika sedang berbicara
+        }
+    }
+});
+
+
 // Edit Profile Modal
 editProfileBtn.addEventListener('click', () => {
     populateProfileForm(userProfileData);
@@ -406,14 +504,30 @@ profileForm.addEventListener('submit', async (e) => {
     const formData = new FormData(profileForm);
     const userName = formData.get('userName');
     const children = [];
+    let hasInvalidChildAge = false; // Flag untuk melacak validasi usia
+
     document.querySelectorAll('.child-entry').forEach(childDiv => {
-        const name = childDiv.querySelector('.child-name').value;
-        const age = childDiv.querySelector('.child-age').value;
-        const gender = childDiv.querySelector('.child-gender').value;
-        if (name && age && gender) {
-            children.push({ name, age: parseInt(age), gender });
+        const name = childDiv.querySelector('.child-name').value.trim();
+        const age = parseInt(childDiv.querySelector('.child-age').value);
+        const gender = childDiv.querySelector('.child-gender').value.trim();
+        
+        if (name && !isNaN(age) && gender) {
+            // Validasi usia di frontend sesuai Kemenkes: 5-9 tahun (anak), 10-18 tahun (remaja)
+            if (age < 5 || age > 18) {
+                hasInvalidChildAge = true;
+                // Memberikan feedback visual langsung (opsional, bisa dengan alert)
+                childDiv.querySelector('.child-age').style.borderColor = 'red';
+                alert(`Umur ${name} (${age} tahun) tidak valid. Sago hanya melayani anak usia 5-18 tahun.`);
+            } else {
+                childDiv.querySelector('.child-age').style.borderColor = ''; // Reset border
+                children.push({ name, age, gender });
+            }
         }
     });
+
+    if (hasInvalidChildAge) {
+        return; // Hentikan proses submit jika ada usia anak yang tidak valid
+    }
 
     const newProfileData = { userName, children };
 
@@ -426,12 +540,14 @@ profileForm.addEventListener('submit', async (e) => {
         const data = await response.json();
         if (response.ok) {
             alert(data.message);
-            userProfileData = data.user_profile;
+            userProfileData = data.user_profile; // Update local data with new profile
             updateProfileDisplay(userProfileData);
             closeModal('editProfileModal');
             loadConversationsList();
 
-            window.location.href = window.location.pathname + "?session_id=" + currentSessionId;
+            // Opsional: Reload halaman untuk memastikan userProfileData di Flask session terupdate,
+            // namun untuk UX lebih baik, hindari reload penuh jika tidak esensial.
+            // window.location.href = window.location.pathname + "?session_id=" + currentSessionId;
         } else {
             alert(`Gagal menyimpan profil: ${data.message}`);
         }
@@ -444,7 +560,9 @@ profileForm.addEventListener('submit', async (e) => {
 function populateProfileForm(profile) {
     document.getElementById('userName').value = profile.name === "Anonim" ? "" : profile.name;
     childrenContainer.innerHTML = '';
-    profile.children.forEach(child => addChildField(child));
+    // Sort children by name for consistent display
+    const sortedChildren = [...profile.children].sort((a,b) => a.name.localeCompare(b.name));
+    sortedChildren.forEach(child => addChildField(child));
 }
 
 function addChildField(child = {}) {
@@ -477,7 +595,26 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleSidebar();
     });
 
+    // Close sidebar if clicking outside when in mobile overlay mode
+    mainContainer.addEventListener('click', (event) => {
+        if (window.innerWidth <= 768 && sidebar.classList.contains('open') && !sidebar.contains(event.target) && !sidebarToggleBtn.contains(event.target)) {
+            toggleSidebar(false);
+        }
+    });
+
     newChatBtn.addEventListener('click', startNewChat);
+
+    // New: Event listener for the conversations list toggle button
+    conversationsListToggle.addEventListener('click', () => {
+        // Toggle the visibility of the actual conversations list
+        const isClosed = sidebar.classList.contains('closed-desktop');
+        if (isClosed) { // If sidebar is closed, open it to show the list
+            toggleSidebar(true);
+        } else { // If sidebar is open, simply toggle the list visibility
+            conversationsList.style.display = conversationsList.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+
 
     sendBtn.addEventListener('click', sendMessage);
     chatInput.addEventListener('keypress', (e) => {

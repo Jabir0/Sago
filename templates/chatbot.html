@@ -1,161 +1,326 @@
 <!DOCTYPE html>
 <html lang="id">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sago : Smart Agent Gizi Online</title>
-    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link
+      rel="icon"
+      href="{{ url_for('static', filename='images/logo.png') }}"
+      type="image/png"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="text/javascript" id="MathJax-script" async
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
-    </script>
+    <script
+      type="text/javascript"
+      id="MathJax-script"
+      async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+    ></script>
     <script>
-        // Configure MathJax to process only delimited LaTeX
-        MathJax = {
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            },
-            svg: {
-                fontCache: 'global'
-            }
-        };
+      // Configure MathJax to process only delimited LaTeX
+      MathJax = {
+        tex: {
+          inlineMath: [
+            ["$", "$"],
+            ["\\(", "\\)"],
+          ],
+          displayMath: [
+            ["$$", "$$"],
+            ["\\[", "\\]"],
+          ],
+        },
+        svg: {
+          fontCache: "global",
+        },
+      };
     </script>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="container" id="mainContainer">
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <a href="{{ url_for('gizibot_home_page') }}" class="app-logo-link">
-                    <span class="app-title">Sago</span>
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo Sago" class="app-logo">
-                </a>
-                <button class="new-chat-btn" id="newChatBtn" title="Mulai Percakapan Baru">
-                    <i class="fas fa-plus"></i> New Chat
-                </button>
-            </div>
-            <div class="conversations-list" id="conversationsList">
-            </div>
-            <div class="sidebar-footer">
-                <div class="footer-item settings-item" id="settingsBtn">
-                    <i class="fas fa-cog"></i> Pengaturan
-                </div>
-                <div class="footer-profile">
-                    <div class="profile-info">
-                        <span class="profile-name" id="displayUserName">{{ user_profile.name if user_profile.name else 'Anonim' }}</span>
-                        <div id="displayChildrenInfo">
-                            {% if user_profile.children %}
-                                {% for child in user_profile.children %}
-                                    <span class="child-info">{{ child.name }} ({{ child.age }} thn, {{ child.gender }})</span><br>
-                                {% endfor %}
-                            {% else %}
-                                <span class="child-info">Belum ada info anak</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <button class="edit-profile-btn" id="editProfileBtn" title="Edit Profile"><i class="fas fa-edit"></i></button>
-                </div>
-            </div>
-        </aside>
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top-section">
+          <div class="sidebar-header">
+            <a href="{{ url_for('gizibot_home_page') }}" class="app-logo-link">
+              <span class="app-title">Sago</span>
+              <img
+                src="{{ url_for('static', filename='images/logo.png') }}"
+                alt="Logo Sago"
+                class="app-logo"
+              />
+            </a>
+            <button
+              class="sidebar-toggle-btn"
+              id="sidebarToggleBtn"
+              title="Toggle Riwayat Chat"
+            >
+              <i class="fas fa-bars"></i>
+            </button>
+            <!-- Tombol toggle khusus HP -->
+            <button
+              class="sidebar-toggle-btn mobile-only"
+              id="sidebarToggleBtnMobile"
+              title="Buka Menu"
+              style="display: none"
+            >
+              <i class="fas fa-bars"></i>
+            </button>
+            <br />
+          </div>
+          <button
+            class="new-chat-btn"
+            id="newChatBtn"
+            title="Mulai Percakapan Baru"
+          >
+            <i class="fas fa-plus"></i> <span class="btn-text">New Chat</span>
+          </button>
+        </div>
 
-        <main class="chat-area">
-            <header class="chat-header">
-                <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="Toggle Riwayat Chat">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="chat-title" id="currentChatTitle">Sago Chat</div>
-            </header>
+        <div class="conversations-list-wrapper">
+          <button
+            class="conversations-list-toggle"
+            id="conversationsListToggle"
+            title="Riwayat Chat"
+          >
+            <i class="fas fa-comment-dots"></i>
+            <span class="btn-text">Riwayat Chat</span>
+          </button>
+          <div class="conversations-list" id="conversationsList"></div>
+        </div>
 
-            <div class="messages" id="messages">
-                {% for message in initial_messages %}
-                    <div class="message {{ 'user-message' if message.role == 'user' else 'bot-message' }}">
-                        <div class="message-content">{{ message.content | safe }}</div>
-                        <div class="message-timestamp">{{ message.timestamp.strftime('%H:%M') }}</div>
-                    </div>
-                {% endfor %}
+        <div class="sidebar-footer">
+          <div class="footer-item settings-item" id="settingsBtn">
+            <i class="fas fa-cog"></i> <span class="item-text">Pengaturan</span>
+          </div>
+          <div class="footer-profile">
+            <div class="profile-info">
+              <span class="profile-name" id="displayUserName"
+                >{{ user_profile.name if user_profile.name else 'Anonim'
+                }}</span
+              >
+              <div id="displayChildrenInfo">
+                {% if user_profile.children %} {% for child in
+                user_profile.children %}
+                <span class="child-info"
+                  >{{ child.name }} ({{ child.age }} thn, {{ child.gender
+                  }})</span
+                ><br />
+                {% endfor %} {% else %}
+                <span class="child-info">Belum ada info anak</span>
+                {% endif %}
+              </div>
             </div>
+            <button
+              class="edit-profile-btn"
+              id="editProfileBtn"
+              title="Edit Profile"
+            >
+              <i class="fas fa-edit"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
 
-            <div class="typing-indicator" id="typingIndicator">
-                <div class="message-content">
-                    <div class="typing-dots"><span></span><span></span><span></span></div>
-                </div>
-            </div>
+      <main class="chat-area">
+        <header class="chat-header">
+          <div class="chat-title" id="currentChatTitle">Sago Chat</div>
+        </header>
 
-            <div class="chat-input-area">
-                <textarea id="chatInput" placeholder="Apa yang ada di pikiran Anda?" rows="1"></textarea>
-                <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+        <div class="messages" id="messages">
+          {% for message in initial_messages %}
+          <div
+            class="message {{ 'user-message' if message.role == 'user' else 'bot-message' }}"
+          >
+            <div class="message-content">{{ message.content | safe }}</div>
+            <div class="message-timestamp">
+              {{ message.timestamp.strftime('%H:%M') }}
             </div>
-        </main>
+            {% if message.role != 'user' %}
+            <button
+              class="read-aloud-btn"
+              onclick="readAloud(this)"
+              title="Bacakan"
+            >
+              <i class="fas fa-volume-up"></i>
+            </button>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+          <div class="message-content">
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-input-area">
+          <textarea
+            id="chatInput"
+            placeholder="Apa yang ada di pikiran Anda?"
+            rows="1"
+          ></textarea>
+          <button id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </main>
     </div>
 
     <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="closeSettingsModal">&times;</span>
-            <h2>Settings</h2>
-            <div class="setting-item">
-                <label for="darkModeToggle">Dark Mode</label>
-                <label class="switch">
-                    <input type="checkbox" id="darkModeToggle">
-                    <span class="slider round"></span>
-                </label>
-            </div>
-            <div class="setting-item">
-                <button id="clearAllChatsBtn" class="danger-btn">Clear All Chats</button>
-            </div>
+      <div class="modal-content">
+        <span class="close-button" id="closeSettingsModal">&times;</span>
+        <h2>Settings</h2>
+        <div class="setting-item">
+          <label for="darkModeToggle">Dark Mode</label>
+          <label class="switch">
+            <input type="checkbox" id="darkModeToggle" />
+            <span class="slider round"></span>
+          </label>
         </div>
+        <div class="setting-item">
+          <button id="clearAllChatsBtn" class="danger-btn">
+            Clear All Chats
+          </button>
+        </div>
+        <div class="setting-item">
+          <label for="autoReadAloudToggle">Baca Otomatis Respon Sago</label>
+          <label class="switch">
+            <input type="checkbox" id="autoReadAloudToggle" />
+            <span class="slider round"></span>
+          </label>
+        </div>
+      </div>
     </div>
 
     <div id="editProfileModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="closeEditProfileModal">&times;</span>
-            <h2>Edit Profile</h2>
-            <form id="profileForm">
-                <div class="form-group">
-                    <label for="userName">Nama Anda:</label>
-                    <input type="text" id="userName" name="userName" required value="{{ user_profile.name if user_profile.name != 'Anonim' else '' }}">
-                </div>
-                <h3>Informasi Anak:</h3>
-                <div id="childrenContainer">
-                </div>
-                <button type="button" id="addChildBtn" class="add-child-btn"><i class="fas fa-plus"></i> Tambah Anak</button>
-                <button type="submit" class="submit-profile-btn">Simpan Profil</button>
-            </form>
-        </div>
+      <div class="modal-content">
+        <span class="close-button" id="closeEditProfileModal">&times;</span>
+        <h2>Edit Profile</h2>
+        <form id="profileForm">
+          <div class="form-group">
+            <label for="userName">Nama Anda:</label>
+            <input
+              type="text"
+              id="userName"
+              name="userName"
+              required
+              value="{{ user_profile.name if user_profile.name != 'Anonim' else '' }}"
+            />
+          </div>
+          <h3>Informasi Anak:</h3>
+          <div id="childrenContainer"></div>
+          <button type="button" id="addChildBtn" class="add-child-btn">
+            <i class="fas fa-plus"></i> Tambah Anak
+          </button>
+          <button type="submit" class="submit-profile-btn">
+            Simpan Profil
+          </button>
+        </form>
+      </div>
     </div>
 
     <template id="child-template">
-        <div class="child-entry">
-            <div class="form-group">
-                <label>Nama Anak:</label>
-                <input type="text" class="child-name" placeholder="Nama">
-            </div>
-            <div class="form-group">
-                <label>Umur Anak:</label>
-                <input type="number" class="child-age" placeholder="Umur" min="0">
-            </div>
-            <div class="form-group">
-                <label>Gender:</label>
-                <select class="child-gender">
-                    <option value="">Pilih</option>
-                    <option value="laki-laki">Laki-laki</option>
-                    <option value="perempuan">Perempuan</option>
-                </select>
-            </div>
-            <button type="button" class="remove-child-btn"><i class="fas fa-times"></i> Hapus</button>
+      <div class="child-entry">
+        <div class="form-group">
+          <label>Nama Anak:</label>
+          <input type="text" class="child-name" placeholder="Nama" />
         </div>
+        <div class="form-group">
+          <label>Umur Anak:</label>
+          <input type="number" class="child-age" placeholder="Umur" min="0" />
+        </div>
+        <div class="form-group">
+          <label>Gender:</label>
+          <select class="child-gender">
+            <option value="">Pilih</option>
+            <option value="laki-laki">Laki-laki</option>
+            <option value="perempuan">Perempuan</option>
+          </select>
+        </div>
+        <button type="button" class="remove-child-btn">
+          <i class="fas fa-times"></i> Hapus
+        </button>
+      </div>
     </template>
 
     <script>
-        // Pass initial data from Flask to JavaScript
-        window.userProfileData = {{ user_profile | tojson | safe }};
-        window.currentSessionId = "{{ current_session_id }}";
+      // Pass initial data from Flask to JavaScript
+      window.userProfileData = {{ user_profile | tojson | safe }};
+      window.currentSessionId = "{{ current_session_id }}";
     </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
 
+    <script>
+      // Toggle sidebar di HP
+      const sidebar = document.getElementById("sidebar");
+      const sidebarToggleBtn = document.getElementById("sidebarToggleBtn");
+      sidebarToggleBtn.addEventListener("click", function () {
+        sidebar.classList.toggle("open");
+      });
+      document.addEventListener("click", function (e) {
+        if (
+          sidebar.classList.contains("open") &&
+          !sidebar.contains(e.target) &&
+          e.target !== sidebarToggleBtn
+        ) {
+          sidebar.classList.remove("open");
+        }
+      });
+    </script>
+    <script>
+      // Toggle sidebar di HP
+      const sidebarToggleBtnMobile = document.getElementById(
+        "sidebarToggleBtnMobile"
+      );
+      sidebarToggleBtnMobile.addEventListener("click", function () {
+        sidebar.classList.toggle("open");
+      });
+    </script>
+    <script>
+      function readAloud(btn) {
+        const msgDiv = btn.parentElement.querySelector(".message-content");
+        if (!msgDiv) return;
+        const text = msgDiv.innerText || msgDiv.textContent;
+        if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.lang = "id-ID";
+
+          // Pilih suara Bahasa Indonesia jika tersedia
+          const synth = window.speechSynthesis;
+          let voices = synth.getVoices();
+          // Cari suara Google Bahasa Indonesia jika ada
+          let foundVoice = voices.find(
+            (voice) =>
+              voice.lang === "id-ID" &&
+              voice.name.toLowerCase().includes("google")
+          );
+          if (!foundVoice) {
+            // Jika tidak ada, ambil suara id-ID lain
+            foundVoice = voices.find((voice) => voice.lang === "id-ID");
+          }
+          if (foundVoice) {
+            utter.voice = foundVoice;
+          }
+
+          synth.speak(utter);
+        } else {
+          alert("Fitur text-to-speech tidak didukung di browser ini.");
+        }
+      }
+    </script>
+  </body>
 </html>

@@ -1,4 +1,5 @@
 # agent.py
+from json import tool
 import os
 import pandas as pd
 from dotenv import load_dotenv
@@ -16,17 +17,17 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages.ai import AIMessage
 from langchain_core.messages.human import HumanMessage
 from langchain_core.messages.tool import ToolMessage
+from datetime import datetime # Import datetime for timestamp
 from langchain_core.tools import tool
-from langgraph.prebuilt import ToolNode
 
 
 print("\nLibrary dan konfigurasi awal berhasil dimuat.")
 
-# --- Definisi State untuk GiziBot ---
+# --- Definisi State untuk Sago ---
 class NutritionState(TypedDict):
     """State yang merepresentasikan percakapan nutrisi pengguna."""
     messages: Annotated[list, add_messages]
-    user_age_group: str
+    user_age_group: str # 'anak' (5-9 tahun) atau 'remaja' (10-18 tahun)
     dietary_preferences: list[str]
     nutritional_needs: list[str]
     recommended_menu: list[str]
@@ -35,23 +36,23 @@ class NutritionState(TypedDict):
 
 print("Skema NutritionState berhasil didefinisikan.")
 
-# --- Instruksi Sistem GiziBot ---
-GIZIBOT_SYSINT = (
+# --- Instruksi Sistem Sago (Diperkaya untuk Logat & Empati) ---
+SAGO_SYSINT = (
     "system",
-    "Anda adalah Sago, sebuah chatbot cerdas dan ramah yang dirancang khusus untuk membantu orang tua "
-    "dalam mendidik anak-anak dan remaja mereka tentang nutrisi. "
-    "Tujuan utama Anda adalah merekomendasikan menu sehat yang dipersonalisasi berdasarkan kebutuhan gizi, "
-    "kelompok usia (anak 6-12 tahun, remaja 13-18 tahun), dan kebiasaan makan anak/remaja. "
-    "Anda juga harus mampu menjawab pertanyaan interaktif tentang nilai gizi makanan, memberikan resep sederhana, "
-    "dan menyusun jadwal makan mingguan. "
-    "Selalu berikan informasi yang akurat, relevan, dan mudah dipahami, dengan nada yang mendukung dan positif. "
-    "Jika Anda perlu mengekstrak usia pengguna, preferensi diet, atau kebutuhan gizi spesifik untuk memberikan "
-    "rekomendasi yang dipersonalisasi, ajukan pertanyaan klarifikasi dengan sopan. "
-    "Fokus hanya pada topik terkait nutrisi dan hindari diskusi di luar topik. "
-    "Cobalah untuk sesekali menggunakan sentuhan bahasa informal atau nuansa logat daerah Sulawesi Tenggara "
-    "(misalnya 'iyo', 'nda apa-apa', 'mantapji') untuk menciptakan pengalaman yang lebih akrab. "
-    "Contoh logat: 'Selamat datang di GiziBot, palu! Marijo kita bahas gizi sehat.' "
+    "Anda adalah Sago, sebuah chatbot cerdas dan ramah yang dirancang khusus untuk membantu orang tua atau pengasuh "
+    "dalam mendidik dan memberikan rekomendasi gizi kepada mereka untuk anak-anak dan remaja mereka. "
+    "Fokus utama Anda adalah menyediakan informasi nutrisi dan rekomendasi menu yang dipersonalisasi "
+    "berdasarkan kelompok usia anak (anak 5-9 tahun, remaja 10-18 tahun), jenis kelamin, kebutuhan gizi, dan preferensi makan mereka. "
+    "Jika pertanyaan umum tentang gizi diajukan, selalu coba kaitkan respons dengan bagaimana informasi tersebut berlaku untuk gizi anak-anak atau remaja. "
+    "Jika pengguna menyimpang dari topik gizi anak/remaja, arahkan percakapan kembali dengan sopan. "
+    "Selalu berikan informasi yang akurat, relevan, dan mudah dipahami oleh orang tua, dengan nada yang mendukung dan positif. "
     "\n\n"
+    "**Sangat penting:** Saat berkomunikasi, adopsi gaya bicara yang ramah dan akrab khas masyarakat Sulawesi Tenggara. Sisipkan frasa seperti 'iyo', 'nda apa-apa', 'santai mi dulu', 'mantapji kalau begitu', 'marijo', 'palu'. Gunakan intonasi dan struktur kalimat yang merefleksikan logat lokal untuk menciptakan kesan yang membumi dan akrab, bukan hanya sekadar menyisipkan kata."
+    "**Contoh gaya bahasa yang diinginkan:**\n"
+    "- Jika anak sehat: 'Iyo, kalau begini bae, anakta masih tergolong sehatji. Tapi lebih bagusmi tambahi sayur-sayur sedikit tiap hari, e.'\n"
+    "- Jika ada kekhawatiran: 'Santai mi dulu, nda usah terlalu khawatir. Banyak juga anak di desa yang seperti itu, tapi pelan-pelanmi kita bantu atur makannya.' Berikan penguatan positif dan dorongan.\n"
+    "- Jika memberi nasihat: 'Mantapji kalau begitu! Ingat, toh, gizi seimbang itu kunci utama untuk anak-anak kita, palu.'\n"
+    "\n"
     "**Sangat Penting:** Untuk pencarian nilai gizi makanan, Anda memiliki akses ke dua dataset CSV: "
     "satu dalam Bahasa Inggris ('food') dan satu lagi yang juga memiliki kolom terjemahan Bahasa Indonesia ('makanan_indonesia'). "
     "**Pencarian Prioritas:** "
@@ -61,6 +62,15 @@ GIZIBOT_SYSINT = (
     "Pastikan untuk memberikan respons nilai gizi dalam Bahasa Indonesia yang mudah dipahami dan ramah kepada pengguna. "
     "Jika nama makanan tidak dapat ditemukan di kedua dataset, berikan pesan bahwa informasi tidak tersedia dan sarankan makanan umum."
     "Untuk resep masakan, Anda hanya bisa membuat resep sederhana yang umum. Jangan mencoba mencari resep dari eksternal."
+    "\n\n"
+    "**Penting untuk Perhitungan BMI:** Anda dapat menghitung dan menganalisis BMI anak/remaja. Jika diminta untuk membahas berat/tinggi badan atau BMI, "
+    "atau jika ingin memberikan rekomendasi yang lebih spesifik untuk kondisi berat badan (misalnya, menaikkan berat badan anak, menurunkan berat badan anak), "
+    "pertama-tama **mintalah tinggi badan (cm) dan berat badan (kg) anak**. "
+    "Gunakan alat `calculate_bmi_and_analyze` dengan informasi umur dan jenis kelamin yang sudah ada di profil (jika tersedia), atau tanyakan jika tidak ada. "
+    "Setelah analisis BMI, berikan saran gizi dan **rekomendasi tindak lanjut yang jelas**: apakah perlu konsultasi ke posyandu, puskesmas, atau rujukan ke dokter spesialis."
+    "Untuk interpretasi BMI, gunakan kategorisasi umum untuk anak/remaja (kurus, normal, gemuk, obesitas) sebagai panduan awal, "
+    "dan selalu sebutkan bahwa konsultasi dengan profesional kesehatan lebih lanjut sangat disarankan."
+    "**Jika hasil BMI menunjukkan status gizi 'kurus' atau 'obesitas' yang parah (sesuai interpretasi tool), berikan peringatan dini dan saran rujukan ke fasilitas kesehatan terdekat dengan tegas.**"
     "\n\n"
     "Untuk merekomendasikan menu sehat, gunakan alat 'get_nutrition_recommendation'. "
     "Untuk menjawab pertanyaan gizi umum atau tentang zat gizi, gunakan alat 'get_nutrition_info'. "
@@ -75,20 +85,21 @@ GIZIBOT_SYSINT = (
     "Anda sudah mengetahui informasi dasar tentang pengguna dan anak-anak mereka dari profil yang disediakan. "
     "Nama pengguna adalah {user_name}. Anak-anak yang Anda ketahui adalah: {children_info}. "
     "Gunakan informasi ini untuk memberikan rekomendasi yang lebih personal tanpa harus bertanya ulang."
+    "Jika Anda memiliki informasi BMI terbaru untuk anak-anak, Anda bisa mengaksesnya dari 'extracted_user_info'."
 )
 print("Instruksi sistem SAGO_SYSINT berhasil didefinisikan.")
 
 # --- Pesan Selamat Datang ---
-WELCOME_MSG = "🌟 Halo ini Sago, Agen pintar panduan nutrisi pribadi untuk buah hati Anda! 🥗\n\nSaya di sini untuk membantu Anda menemukan rekomendasi menu sehat, info gizi, resep, dan jadwal makan. Bagaimana saya bisa bantu Anda hari ini? Ceritakan usia anak Anda dan preferensi makan mereka, ya!"
+WELCOME_MSG = "🌟 Halo ini Sago, Agen pintar panduan nutrisi pribadi untuk buah hati Anda! 🥗\n\nSaya di sini untuk membantu Anda menemukan rekomendasi menu sehat, info gizi, resep, dan jadwal makan untuk anak-anak Anda. Bagaimana saya bisa bantu Anda hari ini? Ceritakan usia anak Anda dan preferensi makan mereka, ya!"
 print("Pesan selamat datang WELCOME_MSG berhasil didefinisikan.")
 
 # --- Inisialisasi Model LLM ---
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp", temperature=0.7)
 print("Model Gemini 2.0 Flash berhasil diinisialisasi.")
 
-# --- Data Gizi yang Diperluas ---
+# --- Data Gizi yang Diperluas (Disesuaikan dengan Kemenkes) ---
 NUTRITION_DATA = {
-    "anak": { # 6-12 tahun
+    "anak": { # 5-9 tahun (Kemenkes)
         "umum": [
             "Sarapan: Bubur ayam dengan suwiran ayam, potongan telur rebus, dan kerupuk sehat (tidak digoreng terlalu banyak)",
             "Makan siang: Nasi, ikan gabus bakar, sayur asem, dan buah naga",
@@ -112,9 +123,21 @@ NUTRITION_DATA = {
              "Makan siang: Nasi jagung, ikan bakar (kakap/bandeng), tumis bunga pepaya, dan pisang",
              "Camilan: Barongko (pisang kukus) atau putu cangkiri",
              "Makan malam: Sop konro (daging sapi) tanpa lemak berlebihan dengan sedikit nasi dan sambal mangga"
+        ],
+        "tinggi_energi": [ # Tambahan untuk anak dengan kebutuhan energi lebih
+            "Sarapan: Roti gandum dengan telur orak-arik, alpukat, dan susu full cream",
+            "Makan siang: Nasi, ayam goreng tanpa kulit (bukan deep-fried), tumis buncis wortel, dan mangga",
+            "Camilan: Puding susu dengan buah-buahan, biskuit gandum",
+            "Makan malam: Makaroni schotel dengan daging cincang dan sayuran"
+        ],
+        "rendah_karbohidrat": [ # Contoh tambahan, bisa disesuaikan
+            "Sarapan: Omelet keju dengan bayam dan sosis ayam rendah lemak",
+            "Makan siang: Daging sapi panggang dengan salad hijau dan brokoli rebus",
+            "Camilan: Keju stik dan kacang almond",
+            "Makan malam: Ikan salmon kukus dengan asparagus dan kembang kol"
         ]
     },
-    "remaja": { # 13-18 tahun
+    "remaja": { # 10-18 tahun (Kemenkes)
         "umum": [
             "Sarapan: Nasi goreng kampung (sedikit minyak) dengan telur mata sapi dan irisan timun",
             "Makan siang: Nasi, sate lilit ayam/ikan (tanpa kulit), plecing kangkung, dan buah jeruk",
@@ -144,6 +167,12 @@ NUTRITION_DATA = {
              "Makan siang: Nasi kuning khas Buton dengan ayam bumbu rica, sayur singkong, dan sambal terasi",
              "Camilan: Kue putu cangkiri atau baje (beras ketan)",
              "Makan malam: Tumis kerang atau udang dengan sayuran (misal: labu siam) dan nasi"
+        ],
+        "tinggi_protein": [
+            "Sarapan: Telur rebus, roti gandum panggang, smoked beef, dan susu protein",
+            "Makan siang: Ayam bakar/panggang, nasi merah, tumis buncis, dan alpukat",
+            "Camilan: Greek yogurt dengan biji chia dan buah beri",
+            "Makan malam: Ikan tuna panggang, quinoa, dan salad sayuran hijau"
         ]
     }
 }
@@ -170,7 +199,7 @@ except Exception as e:
 # --- Fungsi Alat (Tools) ---
 @tool
 def get_nutrition_recommendation(age_group: str, dietary_preferences: Iterable[str], nutritional_needs: Iterable[str]) -> str:
-    """Menyediakan rekomendasi menu sehat berdasarkan kelompok usia, preferensi diet, dan kebutuhan gizi spesifik."""
+    """Menyediakan rekomendasi menu sehat berdasarkan kelompok usia (anak 5-9 tahun, remaja 10-18 tahun), preferensi diet, dan kebutuhan gizi spesifik."""
     age_group_lower = age_group.lower()
 
     if isinstance(dietary_preferences, str):
@@ -194,12 +223,19 @@ def get_nutrition_recommendation(age_group: str, dietary_preferences: Iterable[s
     elif "tinggi_energi" in needs_lower or "tinggi energi" in needs_lower:
         diet_key = "tinggi_energi"
 
-    if age_group_lower in NUTRITION_DATA:
+    # Periksa kembali rentang usia yang valid (5-9 untuk anak, 10-18 untuk remaja)
+    if age_group_lower == "anak":
+        valid_age_group = True
+    elif age_group_lower == "remaja":
+        valid_age_group = True
+    else:
+        valid_age_group = False
+    
+    if valid_age_group and age_group_lower in NUTRITION_DATA:
         if diet_key in NUTRITION_DATA[age_group_lower]:
             recommendations = NUTRITION_DATA[age_group_lower][diet_key]
             response = f"🍽️ **Rekomendasi Menu untuk {age_group.title()} Anda**\n\n"
             
-            # Tambahkan sentuhan logat Kendari
             if "khas_sultra" in prefs_lower:
                 response += f"Wah, mantapji ini! Berdasarkan preferensi makanan '{', '.join(dietary_preferences)}' dan kebutuhan '{', '.join(nutritional_needs)}', berikut menu sehat khas Sulawesi Tenggara yang saya rekomendasikan:\n\n"
             else:
@@ -221,7 +257,10 @@ def get_nutrition_recommendation(age_group: str, dietary_preferences: Iterable[s
             elif diet_key == "khas_sultra":
                 response += "- Makanan khas Sultra banyak yang sehat lho, seperti ikan laut yang kaya Omega-3 dan sagu sebagai karbohidrat kompleks.\n"
                 response += "- Perhatikan porsi dan cara memasak agar tetap sehat (kurangi santan kental, gorengan)\n"
-            else:
+            elif diet_key == "tinggi_energi":
+                response += "- Untuk menambah energi, pilih karbohidrat kompleks, protein, dan lemak sehat dalam porsi cukup.\n"
+                response += "- Camilan padat gizi sangat membantu, seperti buah kering atau campuran kacang.\n"
+            else: # Umum
                 response += "- Makan secara teratur 3 kali sehari dengan 2 camilan sehat di antara waktu makan utama\n"
                 response += "- Minum air putih minimal 8 gelas per hari, penting untuk hidrasi tubuh anak\n"
 
@@ -230,11 +269,11 @@ def get_nutrition_recommendation(age_group: str, dietary_preferences: Iterable[s
         else:
             return f"Maaf, saya belum memiliki rekomendasi spesifik untuk preferensi '{diet_key}' untuk {age_group_lower}. Tapi nda apa-apa, mari kita coba rekomendasi umum yang tetap sehat dan bergizi!"
     else:
-        return "Untuk memberikan rekomendasi yang tepat, mohon sebutkan apakah anak Anda adalah 'anak' (6-12 tahun) atau 'remaja' (13-18 tahun), ya."
+        return "Untuk memberikan rekomendasi yang tepat, mohon sebutkan apakah anak Anda adalah 'anak' (5-9 tahun) atau 'remaja' (10-18 tahun), ya."
 
 @tool
 def get_nutrition_info(query: str) -> str:
-    """Mengambil informasi nutrisi umum berdasarkan pertanyaan pengguna. Termasuk informasi tentang zat gizi makro dan mikro, serta tips pola makan sehat."""
+    """Mengambil informasi nutrisi umum berdasarkan pertanyaan pengguna, dengan fokus pada gizi anak-anak dan remaja. Termasuk informasi tentang zat gizi makro dan mikro, serta tips pola makan sehat."""
     query_lower = query.lower()
 
     nutrition_info = {
@@ -304,8 +343,8 @@ def get_nutrition_info(query: str) -> str:
         return ("💧 **Air Putih - Kebutuhan Vital Tubuh Anak Anda!**\n\n"
                 "**Mengapa penting sekali?** Air membantu semua fungsi tubuh anak berjalan lancar, dari menjaga suhu tubuh, membawa nutrisi, sampai membuang racun. Pentingji itu!\n\n"
                 "**Kebutuhan harian (perkiraan):**\n"
-                "• Anak (6-12 tahun): sekitar 6-8 gelas (1.5 - 2 liter) per hari\n"
-                "• Remaja (13-18 tahun): sekitar 8-10 gelas (2 - 2.5 liter) per hari\n\n"
+                "• Anak (5-9 tahun): sekitar 6-8 gelas (1.5 - 2 liter) per hari\n"
+                "• Remaja (10-18 tahun): sekitar 8-10 gelas (2 - 2.5 liter) per hari\n\n"
                 "**Tips biar anak rajin minum air:**\n"
                 "- Sediakan botol minum yang menarik dan mudah dijangkau.\n"
                 "- Ingatkan untuk minum segelas air setiap bangun tidur dan sebelum makan.\n"
@@ -341,32 +380,37 @@ def get_food_nutrition_facts(food_name: str) -> str:
 
     food_name_lower = food_name.lower().strip()
     result = pd.Series() # Inisialisasi Series kosong untuk menampung hasil
+    found_lang = None # Untuk melacak dari mana hasil ditemukan
 
-    # Prioritas 1: Cari di kolom 'makanan_indonesia' pada dataset ID
+    # Prioritas 1: Exact Match di kolom 'makanan_indonesia'
     if not nutrition_df_id.empty and 'makanan_indonesia' in nutrition_df_id.columns:
         exact_match_id = nutrition_df_id[nutrition_df_id['makanan_indonesia'].str.lower() == food_name_lower]
         if not exact_match_id.empty:
             result = exact_match_id.iloc[0]
-            found_lang = "id"
+            found_lang = "id_exact"
     
-    # Prioritas 2: Jika tidak ditemukan, cari di kolom 'food' pada dataset EN
+    # Prioritas 2: Exact Match di kolom 'food' (jika belum ditemukan)
     if result.empty and not nutrition_df_id.empty and 'food' in nutrition_df_id.columns:
         exact_match_en = nutrition_df_id[nutrition_df_id['food'].str.lower() == food_name_lower]
         if not exact_match_en.empty:
             result = exact_match_en.iloc[0]
-            found_lang = "en"
+            found_lang = "en_exact"
 
-    # Prioritas 3: Jika masih tidak ditemukan, coba partial match di kolom 'makanan_indonesia'
+    # Prioritas 3: Partial Match di kolom 'makanan_indonesia' (jika masih belum ditemukan)
     if result.empty and not nutrition_df_id.empty and 'makanan_indonesia' in nutrition_df_id.columns:
-        partial_match_id = nutrition_df_id[nutrition_df_id['makanan_indonesia'].str.lower().str.contains(food_name_lower, na=False)]
+        # Menggunakan regex=False untuk pencarian substring sederhana, na=False untuk handle NaN
+        partial_match_id = nutrition_df_id[nutrition_df_id['makanan_indonesia'].str.lower().str.contains(food_name_lower, na=False, regex=False)]
         if not partial_match_id.empty:
+            # Pilih yang paling relevan (misal: yang paling pendek atau yang paling banyak cocok)
+            # Untuk sederhana, ambil yang pertama
             result = partial_match_id.iloc[0]
             found_lang = "id_partial"
 
-    # Prioritas 4: Jika masih tidak ditemukan, coba partial match di kolom 'food'
+    # Prioritas 4: Partial Match di kolom 'food' (jika masih belum ditemukan)
     if result.empty and not nutrition_df_id.empty and 'food' in nutrition_df_id.columns:
-        partial_match_en = nutrition_df_id[nutrition_df_id['food'].str.lower().str.contains(food_name_lower, na=False)]
+        partial_match_en = nutrition_df_id[nutrition_df_id['food'].str.lower().str.contains(food_name_lower, na=False, regex=False)]
         if not partial_match_en.empty:
+            # Pilih yang paling relevan (misal: yang paling pendek atau yang paling banyak cocok)
             result = partial_match_en.iloc[0]
             found_lang = "en_partial"
 
@@ -375,9 +419,10 @@ def get_food_nutrition_facts(food_name: str) -> str:
         return f"Maaf, saya tidak dapat menemukan informasi gizi untuk '{food_name}'. Coba nama makanan lain yang lebih umum atau periksa ejaannya."
     
     # Tentukan nama yang akan ditampilkan
-    if 'makanan_indonesia' in result.index and pd.notna(result['makanan_indonesia']) and result['makanan_indonesia'].strip():
+    display_food_name = food_name.title() # Default ke input asli, akan ditimpa jika ditemukan kecocokan yang lebih baik
+    if found_lang and ('id' in found_lang) and ('makanan_indonesia' in result.index) and pd.notna(result['makanan_indonesia']) and result['makanan_indonesia'].strip():
         display_food_name = result['makanan_indonesia'].title()
-    else:
+    elif found_lang and ('en' in found_lang) and ('food' in result.index) and pd.notna(result['food']) and result['food'].strip():
         display_food_name = result['food'].title()
 
     # Berikan intro yang sesuai
@@ -438,12 +483,12 @@ def get_food_nutrition_facts(food_name: str) -> str:
             elif label in ["Protein", "Lemak Total", "Karbohidrat", "Gula", "Serat Pangan", "Air", "Lemak Jenuh", "Lemak Tak Jenuh Tunggal", "Lemak Tak Jenuh Ganda"]:
                 unit = " g"
             elif label in ["Kolesterol", "Sodium", "Kalsium", "Zat Besi", "Tembaga", "Magnesium", "Mangan", "Fosfor", "Kalium", "Selenium", "Seng"]:
-                unit = " mg" 
+                unit = " mg"
             elif "Vitamin" in label:
                 if col in ['vitamin_a', 'vitamin_d', 'vitamin_e', 'vitamin_k'] or value < 0.1:
-                    unit = " mcg" 
+                    unit = " mcg"
                 else:
-                    unit = " mg" 
+                    unit = " mg"
             elif label == "Kepadatan Nutrisi":
                 unit = ""
 
@@ -541,12 +586,17 @@ def generate_recipe(dish_name: str, ingredients: Iterable[str] = None, dietary_n
 def generate_weekly_meal_plan(age_group: str, dietary_preferences: Iterable[str], nutritional_needs: Iterable[str], focus: Literal["diet", "weight_gain", "balanced", "available_food"] = "balanced", available_foods: Iterable[str] = None) -> str:
     """
     Membuat rencana makan mingguan (Senin-Minggu) dalam format teks.
-    Dapat disesuaikan berdasarkan kelompok usia, preferensi diet, kebutuhan gizi, fokus (diet/menambah berat badan/seimbang/makanan tersedia),
+    Dapat disesuaikan berdasarkan kelompok usia (anak 5-9 tahun, remaja 10-18 tahun), preferensi diet, kebutuhan gizi, fokus (diet/menambah berat badan/seimbang/makanan tersedia),
     dan daftar makanan yang tersedia di rumah. Output berupa teks.
     """
     age_group_lower = age_group.lower()
-    if age_group_lower not in ["anak", "remaja"]:
-        return "Mohon sebutkan kelompok usia yang tepat: 'anak' (6-12 tahun) atau 'remaja' (13-18 tahun), ya."
+    # Periksa rentang usia yang valid sesuai Kemenkes
+    if age_group_lower == "anak":
+        pass # Akan diverifikasi lagi di NutritionState update
+    elif age_group_lower == "remaja":
+        pass # Akan diverifikasi lagi di NutritionState update
+    else:
+        return "Mohon sebutkan kelompok usia yang tepat: 'anak' (5-9 tahun) atau 'remaja' (10-18 tahun), ya."
 
     prefs_lower = [d.lower() for d in dietary_preferences] if dietary_preferences else []
     needs_lower = [n.lower() for n in nutritional_needs] if nutritional_needs else []
@@ -600,6 +650,106 @@ def generate_weekly_meal_plan(age_group: str, dietary_preferences: Iterable[str]
     
     return plan
 
+@tool
+def calculate_bmi_and_analyze(child_name: str, age: int, gender: Literal["laki-laki", "perempuan"], height_cm: float, weight_kg: float) -> dict:
+    """
+    Menghitung Body Mass Index (BMI) untuk anak atau remaja dan menganalisis status gizinya.
+    Parameter:
+    - child_name (str): Nama anak.
+    - age (int): Usia anak dalam tahun (harus antara 5-18 tahun).
+    - gender (Literal["laki-laki", "perempuan"]): Jenis kelamin anak.
+    - height_cm (float): Tinggi badan anak dalam sentimeter (cm).
+    - weight_kg (float): Berat badan anak dalam kilogram (kg).
+    Mengembalikan dictionary berisi status gizi (kurus, normal, gemuk, obesitas), nilai BMI, pesan lengkap, dan rekomendasi tindak lanjut.
+    """
+    if not (5 <= age <= 18):
+        return {"status": "error", "message": f"Maaf, perhitungan BMI Sago saat ini hanya mendukung anak usia 5 hingga 18 tahun. Umur {child_name} ({age} tahun) di luar rentang ini."}
+    if height_cm <= 0 or weight_kg <= 0:
+        return {"status": "error", "message": "Tinggi dan berat badan harus lebih besar dari nol untuk menghitung BMI."}
+
+    # Hitung BMI
+    # Formula BMI: kg / (m^2)
+    height_m = height_cm / 100
+    bmi = weight_kg / (height_m ** 2)
+
+    status = "Tidak dapat diinterpretasikan"
+    saran_gizi = ""
+    saran_tindak_lanjut = ""
+    peringatan_dini = False
+
+    # Ambang batas BMI yang disederhanakan untuk anak dan remaja (bervariasi)
+    # Ini adalah generalisasi dan tidak menggantikan grafik pertumbuhan WHO/CDC.
+    # Disarankan selalu berkonsultasi dengan profesional.
+
+    if age <= 9: # Anak (5-9 tahun)
+        if bmi < 14.5:
+            status = "kurus"
+            peringatan_dini = True # Bisa jadi butuh perhatian lebih
+        elif 14.5 <= bmi < 18.5:
+            status = "normal"
+        elif 18.5 <= bmi < 21:
+            status = "gemuk"
+            peringatan_dini = True
+        else: # bmi >= 21
+            status = "obesitas"
+            peringatan_dini = True # Sangat butuh perhatian
+    else: # Remaja (10-18 tahun)
+        if bmi < 16:
+            status = "kurus"
+            peringatan_dini = True
+        elif 16 <= bmi < 23:
+            status = "normal"
+        elif 23 <= bmi < 27:
+            status = "gemuk"
+            peringatan_dini = True
+        else: # bmi >= 27
+            status = "obesitas"
+            peringatan_dini = True
+
+    # Pesan saran gizi dan tindak lanjut berdasarkan status gizi
+    if status == "kurus":
+        saran_gizi = "Penting untuk meningkatkan asupan nutrisi padat gizi, seperti protein dan karbohidrat kompleks. Fokus pada makanan yang sehat, bukan hanya jumlahnya. Rekomendasi bisa mencakup porsi yang lebih besar, camilan bergizi, dan memastikan gizi mikro terpenuhi."
+        saran_tindak_lanjut = "Sangat disarankan untuk segera membawa anak ke Puskesmas/Posyandu terdekat atau konsultasi dengan dokter anak/ahli gizi untuk pemeriksaan dan rencana diet yang lebih terperinci. Nda usah tunggu lama-lama, iyo."
+    elif status == "normal":
+        saran_gizi = "Lanjutkan dengan pola makan seimbang dan aktif bergerak. Pertahankan asupan buah, sayur, protein, dan karbohidrat kompleks yang cukup. Sago bisa bantu rekomendasikan menu-menu sehat untuk menjaga kesehatan optimalnya!"
+        saran_tindak_lanjut = "Pertahankan konsultasi rutin ke Posyandu/Puskesmas untuk pemantauan tumbuh kembang dan gizi anakta, mantapji itu."
+    elif status == "gemuk":
+        saran_gizi = "Penting untuk mengelola asupan kalori dan meningkatkan aktivitas fisik. Fokus pada pengurangan makanan olahan, tinggi gula, dan tinggi lemak jenuh. Perbanyak konsumsi sayur, buah, protein tanpa lemak, dan serat."
+        saran_tindak_lanjut = "Disarankan untuk berkonsultasi dengan dokter anak atau ahli gizi di Puskesmas/Posyandu terdekat untuk panduan gizi dan aktivitas fisik yang tepat. Jangan sungkan, ini untuk kebaikan anakta juga."
+    elif status == "obesitas":
+        saran_gizi = "Ini adalah kondisi yang membutuhkan perhatian serius. Perubahan pola makan dan peningkatan aktivitas fisik secara signifikan sangat penting. Hindari minuman manis, makanan cepat saji, dan camilan tinggi kalori."
+        saran_tindak_lanjut = "MOHON PERHATIAN! Kami sangat menyarankan Anda untuk segera membawa anak ke Puskesmas atau rumah sakit terdekat dan konsultasi dengan dokter spesialis anak atau ahli gizi klinis untuk diagnosis dan penanganan yang komprehensif. Nda bisa tunda-tunda lagi, ini serius!"
+    else:
+        saran_gizi = "Maaf, Sago tidak dapat menginterpretasikan status BMI secara akurat saat ini. Mohon pastikan data tinggi, berat, umur, dan jenis kelamin sudah benar."
+        saran_tindak_lanjut = "Untuk analisis yang lebih akurat, selalu konsultasi dengan profesional kesehatan."
+
+    # Final response message
+    if peringatan_dini:
+        # Gaya bahasa lebih tegas untuk peringatan dini
+        full_response_content = (
+            f"⚠️ **PERINGATAN DINI!** ⚠️\n\n"
+            f"Untuk **{child_name} ({age} tahun, {gender})**: Hasil BMI **{bmi:.2f}** menunjukkan status gizi **{status.title()}**.\n\n"
+            f"{saran_gizi}\n\n"
+            f"**Langkah Selanjutnya:** {saran_tindak_lanjut}\n\n"
+            f"💡 **Penting:** Interpretasi BMI untuk anak-anak dan remaja sangat kompleks dan bergantung pada persentil usia serta jenis kelamin. Hasil ini adalah panduan awal. Untuk penilaian yang akurat dan penanganan lebih lanjut, mohon konsultasi langsung dengan dokter anak atau ahli gizi secepatnya, iyo!"
+        )
+    else:
+        full_response_content = (
+            f"📊 **Hasil BMI untuk {child_name} ({age} tahun, {gender})**: **{bmi:.2f}**\n"
+            f"Status Gizi: **{status.title()}**\n\n"
+            f"{saran_gizi}\n\n"
+            f"**Langkah Selanjutnya:** {saran_tindak_lanjut}\n\n"
+            f"💡 **Penting:** Interpretasi BMI untuk anak-anak dan remaja sangat kompleks dan bergantung pada persentil usia serta jenis kelamin. Hasil ini adalah panduan awal. Untuk penilaian yang akurat, mohon konsultasi langsung dengan dokter anak atau ahli gizi."
+        )
+    
+    return {
+        "status": "success",
+        "bmi_value": round(bmi, 2), # Simpan nilai BMI yang sudah dibulatkan
+        "bmi_status": status,
+        "message": full_response_content
+    }
+
+print("Tool calculate_bmi_and_analyze berhasil didefinisikan.")
 
 print("Fungsi alat (tools) berhasil didefinisikan.")
 
@@ -620,24 +770,44 @@ def chatbot_with_tools(state: NutritionState) -> NutritionState:
     
     children_info = defaults["extracted_user_info"].get("children_info", [])
     if children_info:
-        children_info_str = ", ".join([f"{c['name']} ({c['age']} tahun, {c['gender']})" for c in children_info])
+        # Filter anak-anak yang valid usianya (5-18) untuk dimasukkan ke system prompt
+        valid_children_for_prompt = [
+            f"{c['name']} ({c['age']} tahun, {c['gender']})" 
+            for c in children_info 
+            if 5 <= int(c['age']) <= 18
+        ]
+        children_info_str = ", ".join(valid_children_for_prompt) if valid_children_for_prompt else "tidak ada informasi anak yang relevan"
     else:
         children_info_str = "tidak ada informasi anak"
     
     dynamic_sys_int = (
-        GIZIBOT_SYSINT[0], 
-        GIZIBOT_SYSINT[1].format(user_name=user_name, children_info=children_info_str)
+        SAGO_SYSINT[0], 
+        SAGO_SYSINT[1].format(user_name=user_name, children_info=children_info_str)
     )
 
-    messages_for_llm = [dynamic_sys_int] + state["messages"]
+    # Batasi riwayat pesan yang dikirim ke LLM untuk mengurangi token
+    # Mengambil N pesan terakhir (misal 5 pasang pesan user-bot, atau 10 pesan total)
+    # Anda bisa menyesuaikan angka ini berdasarkan kebutuhan dan quota API Anda
+    MAX_HISTORY_MESSAGES = 10 # Jumlah total pesan (user + bot) yang akan dikirim
+    
+    # Filter dan ambil pesan yang relevan
+    # System prompt hanya perlu dikirim sekali diawal, atau di gabung dengan prompt
+    # Initial message for agent only contains system prompt and relevant messages
+    messages_for_llm_history = state["messages"][-MAX_HISTORY_MESSAGES:] 
+    
+    messages_for_llm = [dynamic_sys_int] + messages_for_llm_history
     
     new_output = llm_with_tools.invoke(messages_for_llm)
 
+    # --- Ekstraksi Informasi dari Respons LLM (usia, preferensi, kebutuhan) ---
+    # Perbarui logika deteksi age_group sesuai Kemenkes (5-9 anak, 10-18 remaja)
     if not defaults["extracted_user_info"].get("age_group"):
         content_lower = new_output.content.lower()
-        if any(keyword in content_lower for keyword in ["anak", "6-12", "6", "7", "8", "9", "10", "11", "12"]):
+        # Deteksi 'anak' (5-9)
+        if any(keyword in content_lower for keyword in ["anak", "5 tahun", "6 tahun", "7 tahun", "8 tahun", "9 tahun"]):
             defaults["extracted_user_info"]["age_group"] = "anak"
-        elif any(keyword in content_lower for keyword in ["remaja", "13-18", "13", "14", "15", "16", "17", "18"]):
+        # Deteksi 'remaja' (10-18)
+        elif any(keyword in content_lower for keyword in ["remaja", "10 tahun", "11 tahun", "12 tahun", "13 tahun", "14 tahun", "15 tahun", "16 tahun", "17 tahun", "18 tahun"]):
             defaults["extracted_user_info"]["age_group"] = "remaja"
     
     defaults["extracted_user_info"].setdefault("dietary_preferences", [])
@@ -676,7 +846,7 @@ def nutrition_node(state: NutritionState) -> NutritionState:
     finished_recommendation = state.get("finished_recommendation", False)
 
     for tool_call in tool_msg.tool_calls:
-        response = "" 
+        response_content = "" # Gunakan nama berbeda agar tidak konflik dengan response dict dari tool BMI
 
         if tool_call["name"] == "get_nutrition_recommendation":
             age_group_arg = tool_call["args"].get("age_group") or age_group
@@ -701,34 +871,29 @@ def nutrition_node(state: NutritionState) -> NutritionState:
                 if need not in current_needs:
                     current_needs.append(need)
 
-            response = get_nutrition_recommendation.invoke({
+            response_content = get_nutrition_recommendation.invoke({
                 "age_group": extracted_user_info.get("age_group", "umum"), 
                 "dietary_preferences": extracted_user_info.get("dietary_preferences", []),
                 "nutritional_needs": extracted_user_info.get("nutritional_needs", [])
             })
-            recommended_menu = [response]
+            recommended_menu = [response_content]
             finished_recommendation = True
 
         elif tool_call["name"] == "get_nutrition_info":
             query_arg = tool_call["args"].get("query", "")
-            response = get_nutrition_info.invoke({"query": query_arg})
+            response_content = get_nutrition_info.invoke({"query": query_arg})
         
         elif tool_call["name"] == "get_food_nutrition_facts":
             food_name_arg = tool_call["args"].get("food_name", "")
-            # Hapus quantity dan unit karena CSV tidak memilikinya seperti API Edamam
-            # quantity_arg = tool_call["args"].get("quantity", 1)
-            # unit_arg = tool_call["args"].get("unit", "serving")
-            response = get_food_nutrition_facts.invoke({
+            response_content = get_food_nutrition_facts.invoke({
                 "food_name": food_name_arg,
-                # "quantity": quantity_arg,
-                # "unit": unit_arg
             })
 
         elif tool_call["name"] == "generate_recipe":
             dish_name_arg = tool_call["args"].get("dish_name", "")
             ingredients_arg = tool_call["args"].get("ingredients", [])
             dietary_needs_arg = tool_call["args"].get("dietary_needs", [])
-            response = generate_recipe.invoke({
+            response_content = generate_recipe.invoke({
                 "dish_name": dish_name_arg,
                 "ingredients": ingredients_arg,
                 "dietary_needs": dietary_needs_arg
@@ -748,20 +913,77 @@ def nutrition_node(state: NutritionState) -> NutritionState:
             if isinstance(available_foods_arg, str):
                 available_foods_arg = [available_foods_arg]
 
-            response = generate_weekly_meal_plan.invoke({
+            response_content = generate_weekly_meal_plan.invoke({
                 "age_group": age_group_plan_arg,
                 "dietary_preferences": dietary_preferences_plan_arg,
                 "nutritional_needs": nutritional_needs_plan_arg,
                 "focus": focus_arg,
                 "available_foods": available_foods_arg
             })
+        
+        elif tool_call["name"] == "calculate_bmi_and_analyze":
+            # Extract child info from args or state
+            child_name_arg = tool_call["args"].get("child_name")
+            age_arg = tool_call["args"].get("age")
+            gender_arg = tool_call["args"].get("gender")
+            height_cm_arg = tool_call["args"].get("height_cm")
+            weight_kg_arg = tool_call["args"].get("weight_kg")
+
+            # Try to get missing info from children_info in extracted_user_info
+            target_child_from_profile = None
+            if child_name_arg and extracted_user_info.get("children_info"):
+                for child_profile in extracted_user_info["children_info"]:
+                    if child_profile['name'].lower() == child_name_arg.lower():
+                        target_child_from_profile = child_profile
+                        break
+            
+            # Prioritaskan data dari tool_call args, lalu dari profil
+            final_child_name = child_name_arg or (target_child_from_profile['name'] if target_child_from_profile else None)
+            final_age = age_arg or (target_child_from_profile['age'] if target_child_from_profile else None)
+            final_gender = gender_arg or (target_child_from_profile['gender'] if target_child_from_profile else None)
+            
+            # Validasi input untuk tool BMI sebelum memanggilnya
+            # Jika nama anak tidak dapat ditentukan, atau info vital lainnya hilang, minta dari user
+            if final_child_name is None or final_age is None or final_gender is None or height_cm_arg is None or weight_kg_arg is None:
+                # Coba berikan pesan yang lebih spesifik berdasarkan apa yang hilang
+                missing_info = []
+                if final_child_name is None: missing_info.append("nama anak")
+                if final_age is None: missing_info.append("umur")
+                if final_gender is None: missing_info.append("jenis kelamin")
+                if height_cm_arg is None: missing_info.append("tinggi badan (cm)")
+                if weight_kg_arg is None: missing_info.append("berat badan (kg)")
+                
+                response_content = f"Untuk menghitung BMI, saya perlu informasi lengkap: {', '.join(missing_info)}. " \
+                                   f"Mohon sebutkan data tersebut ya, misalnya: 'Anak saya [Nama], umur [X] tahun, jenis kelamin [Laki-laki/Perempuan], tinggi [Y] cm, berat [Z] kg'."
+            elif not (5 <= final_age <= 18):
+                 response_content = f"Maaf, Sago saat ini hanya mendukung perhitungan BMI untuk anak usia 5 hingga 18 tahun. Umur {final_child_name} ({final_age} tahun) di luar rentang ini."
+            else:
+                bmi_tool_result = calculate_bmi_and_analyze.invoke({
+                    "child_name": final_child_name,
+                    "age": final_age,
+                    "gender": final_gender,
+                    "height_cm": height_cm_arg,
+                    "weight_kg": weight_kg_arg
+                })
+                
+                # Check status from tool result
+                if bmi_tool_result["status"] == "success":
+                    # Simpan hasil BMI ke extracted_user_info untuk referensi di frontend melalui session Flask
+                    extracted_user_info.setdefault("children_bmi_info", {})[final_child_name.lower()] = {
+                        "bmi": bmi_tool_result["bmi_value"], # Ambil nilai BMI yang sudah dibulatkan
+                        "status": bmi_tool_result["bmi_status"],
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    response_content = bmi_tool_result["message"]
+                else:
+                    response_content = bmi_tool_result["message"] # Pesan error dari tool
 
         else:
             raise NotImplementedError(f'Panggilan alat tidak dikenal: {tool_call["name"]}')
 
         outbound_msgs.append(
             ToolMessage(
-                content=response,
+                content=response_content,
                 name=tool_call["name"],
                 tool_call_id=tool_call["id"],
             )
@@ -781,7 +1003,7 @@ print("Node-node LangGraph berhasil didefinisikan.")
 
 # --- Definisi Edge Kondisional ---
 
-all_tools = [get_nutrition_info, get_nutrition_recommendation, get_food_nutrition_facts, generate_recipe, generate_weekly_meal_plan]
+all_tools = [get_nutrition_info, get_nutrition_recommendation, get_food_nutrition_facts, generate_recipe, generate_weekly_meal_plan, calculate_bmi_and_analyze]
 all_tools_dict = {tool.name: tool for tool in all_tools}
 
 llm_with_tools = llm.bind_tools(all_tools)
@@ -814,12 +1036,12 @@ graph_builder.add_conditional_edges("chatbot", maybe_route_to_tools)
 graph_builder.add_edge("nutrition_node", "chatbot")
 
 final_nutrition_chatbot_graph = graph_builder.compile()
-print("✅ GiziBot agent berhasil dikompilasi tanpa persistence (menggunakan sesi Flask untuk memori).")
+print("✅ Sago agent berhasil dikompilasi tanpa persistence (menggunakan sesi Flask untuk memori).")
 
-# --- Fungsi get_gizibot_response untuk Flask ---
-def get_gizibot_response(initial_state: NutritionState) -> NutritionState: 
+# --- Fungsi get_sago_response untuk Flask ---
+def get_sago_response(initial_state: NutritionState) -> NutritionState: 
     """
-    Fungsi untuk mendapatkan respons dari GiziBot untuk digunakan di Flask.
+    Fungsi untuk mendapatkan respons dari Sago untuk digunakan di Flask.
     Menerima state awal lengkap dan mengembalikan state akhir setelah eksekusi graph.
     """
     try:
@@ -827,9 +1049,22 @@ def get_gizibot_response(initial_state: NutritionState) -> NutritionState:
         return result_state
 
     except Exception as e:
-        print(f"Error in get_gizibot_response: {str(e)}") 
+        print(f"Error in get_sago_response: {str(e)}") 
+        # Coba ekstrak pesan error yang lebih relevan untuk pengguna
+        error_content = str(e)
+        if "Could not parse tool call" in error_content:
+            error_content = "Maaf, saya kesulitan memahami format permintaan Anda untuk alat bantu saya. Bisakah Anda coba jelaskan lebih sederhana?"
+        elif "Invalid Tool Call" in error_content:
+            error_content = "Sepertinya ada masalah dengan cara saya mencoba menggunakan alat bantu. Mari kita coba lagi dengan pertanyaan yang berbeda."
+        elif "429" in error_content or "RESOURCE_EXHAUSTED" in error_content:
+            error_content = "Maaf, Sago sedang sangat sibuk atau mencapai batas penggunaan. Mohon tunggu sebentar dan coba lagi. Terima kasih atas kesabaran Anda!"
+        elif "5" in error_content: # Catch-all for 5xx server errors
+            error_content = "Maaf, ada masalah di server Sago. Kami sedang memperbaikinya. Mohon coba lagi nanti."
+        else:
+            error_content = "Maaf, terjadi kesalahan internal di agent. Coba ulangi pertanyaan Anda."
+
         return NutritionState(
-            messages=initial_state["messages"] + [AIMessage(content=f"Maaf, terjadi kesalahan internal di agent: {str(e)}. Coba ulangi pertanyaan Anda.")],
+            messages=initial_state["messages"] + [AIMessage(content=f"{error_content}")],
             user_age_group=initial_state.get("user_age_group", ""),
             dietary_preferences=initial_state.get("dietary_preferences", []),
             nutritional_needs=initial_state.get("nutritional_needs", []),
@@ -838,19 +1073,20 @@ def get_gizibot_response(initial_state: NutritionState) -> NutritionState:
             extracted_user_info=initial_state.get("extracted_user_info", {})
         )
         
-print("🎉 GiziBot siap digunakan untuk aplikasi web!")
+print("🎉 Sago siap digunakan untuk aplikasi web!")
 
 # --- Fungsi untuk testing terminal (opsional) ---
 def run_terminal_chat():
     """Fungsi untuk menjalankan chat di terminal (untuk testing)."""
-    print("=== GiziBot Terminal Chat ===")
+    print("=== Sago Terminal Chat ===")
     print(WELCOME_MSG)
     
     terminal_messages_history = []
     terminal_user_profile = {
         "name": "Pengguna Terminal",
         "children": [
-            {"name": "Anak Uji", "age": 10, "gender": "perempuan"}
+            {"name": "Anak Uji", "age": 8, "gender": "perempuan"}, # Umur valid 5-9
+            {"name": "Remaja Uji", "age": 15, "gender": "laki-laki"} # Umur valid 10-18
         ]
     }
 
@@ -873,6 +1109,16 @@ def run_terminal_chat():
             elif msg_dict['role'] == 'assistant':
                 langchain_messages_history.append(AIMessage(content=msg_dict['content']))
 
+        # Format children_info_formatted untuk agent
+        children_info_formatted = []
+        for child in terminal_user_profile.get('children', []):
+            if 5 <= int(child['age']) <= 18: # Filter anak yang valid
+                children_info_formatted.append({
+                    "name": child['name'],
+                    "age": int(child['age']),
+                    "gender": child['gender']
+                })
+
         initial_agent_state = NutritionState(
             messages=langchain_messages_history,
             user_age_group="",
@@ -882,21 +1128,23 @@ def run_terminal_chat():
             finished_recommendation=False,
             extracted_user_info={
                 "user_name": terminal_user_profile['name'],
-                "children_info": terminal_user_profile['children']
+                "children_info": children_info_formatted,
+                "children_bmi_info": {} # Tambahkan ini untuk testing terminal
             }
         )
 
-        result_state = get_gizibot_response(initial_agent_state)
+        result_state = get_sago_response(initial_agent_state)
         
         bot_response = "Maaf, Sago tidak dapat memberikan respons saat ini."
         if result_state and result_state["messages"]:
-            for msg in reversed(result_state["messages"]):
-                if isinstance(msg, AIMessage):
-                    bot_response = msg.content
-                    break
-                elif isinstance(msg, ToolMessage): 
-                    bot_response = msg.content
-                    break
+            # Dapatkan pesan terakhir dari agent
+            last_message = result_state["messages"][-1]
+            if isinstance(last_message, AIMessage):
+                bot_response = last_message.content
+            elif isinstance(last_message, ToolMessage):
+                bot_response = last_message.content
+            else:
+                bot_response = "Maaf, Sago tidak dapat memberikan respons saat ini (format pesan tidak dikenal)."
 
         print(f"Sago: {bot_response}")
 
