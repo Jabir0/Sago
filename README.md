@@ -71,7 +71,7 @@ LLM berfungsi sebagai 'otak' yang memahami niat pengguna dan memutuskan kapan ha
 1.  **Clone repositori ini:**
 
     ```bash
-    git clone [URL_REPO_ANDA]
+    git clone https://github.com/Jabir0/Sago.git
     cd sago
     ```
 
@@ -212,7 +212,7 @@ The LLM functions as the 'brain' that understands user intent and decides when t
 1.  **Clone this repository:**
 
     ```bash
-    git clone [YOUR_REPO_URL]
+    git clone https://github.com/Jabir0/Sago.git
     cd sago
     ```
 
